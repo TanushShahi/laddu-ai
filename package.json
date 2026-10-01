@@ -1,0 +1,37 @@
+{
+  "name": "jarvis-assistant",
+  "version": "1.0.0",
+  "description": "JARVIS — Universal Personal AI Assistant: Modular, Voice-First, Privacy-Conscious, Cross-Platform AI Assistant using Free and Open-Source Technologies",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test tests/**/*.test.js",
+    "app": "node electron/main.js",
+    "shortcut": "powershell -ExecutionPolicy Bypass -File install-desktop-shortcut.ps1",
+    "sentry": "node voice/sentry/daemon.js",
+    "sentry:install": "powershell -ExecutionPolicy Bypass -File install-startup-service.ps1",
+    "sentry:uninstall": "powershell -ExecutionPolicy Bypass -File uninstall-startup-service.ps1",
+    "cert:generate": "powershell -ExecutionPolicy Bypass -File scripts/generate-cert.ps1"
+  },
+  "keywords": [
+    "jarvis",
+    "ai-assistant",
+    "voice-assistant",
+    "local-ai",
+    "rag",
+    "privacy"
+  ],
+  "author": "Antigravity JARVIS Team",
+  "license": "MIT",
+  "dependencies": {
+    "csv-parse": "^5.6.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mammoth": "^1.9.0",
+    "pdf-parse": "^1.1.1",
+    "ws": "^8.18.0",
+    "xlsx": "^0.18.5"
+  }
+}

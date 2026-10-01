@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment and sensitive keys
+.env
+.env.local
+*.pfx
+*.key
+*.cert
+certificates/
+
+# System / logs
+*.log
+.DS_Store
+Thumbs.db
+data/temp/
+
+# Build and Electron dist
+dist/
+build/

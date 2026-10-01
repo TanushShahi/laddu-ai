@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LADDU — Universal Personal AI Assistant</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="sci-fi-theme">
+  <!-- Top Navigation & Status Bar -->
+  <header class="hud-header">
+    <div class="logo-group">
+      <div class="reactor-mini" id="reactorMini"></div>
+      <div class="brand">
+        <h1 class="brand-title">L.A.D.D.U.</h1>
+        <span class="brand-subtitle">UNIVERSAL PERSONAL AI ASSISTANT</span>
+      </div>
+    </div>
+
+    <!-- AI Activity Visualizer Pipeline -->
+    <div class="activity-pipeline" id="activityPipeline">
+      <span class="pipeline-step" data-step="IDLE">READY</span>
+      <span class="pipeline-arrow">&gt;</span>
+      <span class="pipeline-step" data-step="LISTENING">LISTENING</span>
+      <span class="pipeline-arrow">&gt;</span>
+      <span class="pipeline-step" data-step="THINKING">THINKING</span>
+      <span class="pipeline-arrow">&gt;</span>
+      <span class="pipeline-step" data-step="SEARCHING">SEARCHING</span>
+      <span class="pipeline-arrow">&gt;</span>
+      <span class="pipeline-step" data-step="ANALYZING">ANALYZING</span>
+      <span class="pipeline-arrow">&gt;</span>
+      <span class="pipeline-step" data-step="EXECUTING">EXECUTING</span>
+      <span class="pipeline-arrow">&gt;</span>
+      <span class="pipeline-step" data-step="COMPLETED">COMPLETED</span>
+    </div>
+
+    <div class="status-group">
+      <!-- Voiceprint Biometrics Status -->
+      <div class="voice-id-badge" id="voiceIdBadge" title="Click to Enroll or Manage Voiceprint">
+        <span class="voice-id-icon">🗣️</span>
+        <span id="voiceIdText">VOICE ID: RECOGNIZED (BOSS)</span>
+      </div>
+
+      <div class="status-indicator">
+        <span class="pulse-dot" id="systemPulse"></span>
+        <span id="systemStatusText">ONLINE</span>
+      </div>
+      <div class="clock-display" id="hudClock">00:00:00</div>
+    </div>
+  </header>
+
+  <!-- Main HUD Layout -->
+  <div class="hud-container">
+    <nav class="hud-sidebar">
+      <button class="nav-btn active" data-tab="tab-home">
+        <span class="nav-icon">◈</span> HUD DASHBOARD
+      </button>
+      <button class="nav-btn" data-tab="tab-chat">
+        <span class="nav-icon">💬</span> CHAT & VOICE
+      </button>
+      <button class="nav-btn" data-tab="tab-companion">
+        <span class="nav-icon">✨</span> DAILY & HEALTH
+      </button>
+      <button class="nav-btn" data-tab="tab-research">
+        <span class="nav-icon">🌐</span> WEB RESEARCH
+      </button>
+      <button class="nav-btn" data-tab="tab-knowledge">
+        <span class="nav-icon">📁</span> KNOWLEDGE & RAG
+      </button>
+      <button class="nav-btn" data-tab="tab-memory">
+        <span class="nav-icon">🧠</span> MEMORY MANAGER
+      </button>
+      <button class="nav-btn" data-tab="tab-permissions">
+        <span class="nav-icon">🛡️</span> PERMISSIONS & SAFETY
+      </button>
+      <button class="nav-btn" data-tab="tab-automations">
+        <span class="nav-icon">⚙️</span> AUTOMATIONS
+      </button>
+      <button class="nav-btn" data-tab="tab-diagnostics">
+        <span class="nav-icon">🩺</span> DIAGNOSTICS
+      </button>
+    </nav>
+
+    <main class="hud-content">
+      <section id="tab-home" class="hud-tab active">
+        <div class="hud-grid-hero">
+          <div class="arc-reactor-card glass-panel">
+            <h2 class="panel-header">VOICE INTERFACE & CORE SENSORS</h2>
+            <div class="visualizer-wrapper">
+              <canvas id="voiceVisualizer" width="320" height="320"></canvas>
+              <div class="reactor-center-status" id="reactorStatus">
+                <span class="status-label">LADDU CORE</span>
+                <span class="status-state" id="coreStateText">ONLINE</span>
+              </div>
+            </div>
+            <div class="voice-controls-bar">
+              <button class="action-btn glow-btn" id="btnToggleVoice">
+                <span class="btn-icon">🎙</span> <span id="voiceBtnLabel">START LISTENING</span>
+              </button>
+              <button class="action-btn outline-btn" id="btnInterrupt">
+                <span class="btn-icon">⏹</span> INTERRUPT
+              </button>
+              <button class="action-btn outline-btn" id="btnOpenEnrollModal" title="Enroll Your Unique Voiceprint">
+                <span class="btn-icon">🗣️</span> ENROLL VOICE
+              </button>
+            </div>
+            <div class="wake-word-hint">
+              Wake Word Trigger: <strong id="wakeWordDisplay">"Hey Laddu"</strong> (or "Laddu")
+            </div>
+          </div>
+
+          <div class="metrics-card glass-panel">
+            <h2 class="panel-header">SYSTEM HEALTH & TELEMETRY</h2>
+            <div class="metric-row">
+              <div class="metric-box">
+                <span class="metric-title">SYSTEM HEALTH</span>
+                <span class="metric-value" id="valHealth">95%</span>
+              </div>
+              <div class="metric-box">
+                <span class="metric-title">ACTIVE MODEL</span>
+                <span class="metric-value highlight" id="valModel">Offline Local</span>
+              </div>
+              <div class="metric-box">
+                <span class="metric-title">RAM USAGE</span>
+                <span class="metric-value" id="valMemory">--</span>
+              </div>
+              <div class="metric-box">
+                <span class="metric-title">DAILY WATER</span>
+                <span class="metric-value highlight" id="valHydration">0 ml</span>
+              </div>
+            </div>
+
+            <h3 class="sub-header">DAILY HEALTH & CONVERSATION PROTOCOLS</h3>
+            <div class="quick-commands-grid">
+              <button class="chip-btn" id="quickBriefingBtn">🌅 Morning Briefing</button>
+              <button class="chip-btn" id="quickWaterBtn">💧 Log Water (+250ml)</button>
+              <button class="chip-btn" id="quickPostureBtn">🧘 Posture & Stretch</button>
+              <button class="chip-btn" id="quickEveningBtn">🌙 Evening Debrief</button>
+              <button class="chip-btn" data-cmd="system diagnostics">🩺 System Health</button>
+              <button class="chip-btn" data-cmd="open chrome">🌐 Open Chrome</button>
+              <button class="chip-btn" data-cmd="open code">💻 Open VS Code</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-chat" class="hud-tab">
+        <div class="chat-card glass-panel">
+          <div class="chat-header">
+            <h2 class="panel-header">CONVERSATION FEED WITH LADDU</h2>
+            <div class="chat-controls">
+              <button class="chip-btn" id="btnClearChat">Clear History</button>
+            </div>
+          </div>
+          <div class="chat-messages" id="chatMessages">
+            <div class="message assistant">
+              <div class="msg-avatar">L</div>
+              <div class="msg-body">
+                <div class="msg-sender">LADDU</div>
+                <div class="msg-text">Good day, Boss. All primary systems are operational. I am prepared to assist you with research, documents, daily routines, or whatever intellectual pursuit you require. How may I be of service?</div>
+              </div>
+            </div>
+          </div>
+          <div class="chat-input-bar">
+            <input type="text" id="chatInput" placeholder="Command LADDU or converse naturally..." autocomplete="off">
+            <button class="action-btn glow-btn" id="btnSendChat">TRANSMIT</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-companion" class="hud-tab">
+        <div class="glass-panel">
+          <h2 class="panel-header">MARVEL JARVIS-STYLE DAILY COMPANION & WELLNESS</h2>
+          <p class="panel-desc">Proactive daily briefings, hydration tracking, ergonomic reminders, and balanced cognitive care.</p>
+          <div class="wellness-dashboard-grid">
+            <div class="wellness-card glass-panel">
+              <h3 class="sub-header" style="margin-top:0;">💧 HYDRATION TELEMETRY</h3>
+              <div class="metric-value highlight" id="companionWaterDisplay" style="font-size:32px;margin:12px 0;">0 ml</div>
+              <p class="text-dim">Daily Target: 2500 ml</p>
+              <div style="display:flex;gap:10px;margin-top:16px;">
+                <button class="action-btn glow-btn" onclick="logWater(250)">+250ml Glass</button>
+                <button class="action-btn outline-btn" onclick="logWater(500)">+500ml Bottle</button>
+              </div>
+            </div>
+
+            <div class="wellness-card glass-panel">
+              <h3 class="sub-header" style="margin-top:0;">🧘 ERGONOMIC & OCULAR PROTOCOL</h3>
+              <p class="text-dim" style="margin:12px 0;">Prevent strain with calibrated posture checks and 20-20-20 visual rest cycles.</p>
+              <button class="action-btn glow-btn" id="btnTriggerHealthNudge">TRIGGER WELLNESS CHECK</button>
+              <div id="healthNudgeResult" style="margin-top:14px;font-size:14px;"></div>
+            </div>
+          </div>
+
+          <h3 class="sub-header">DAILY BRIEFINGS & CONVERSATION LOG</h3>
+          <div style="display:flex;gap:12px;margin-bottom:16px;">
+            <button class="action-btn glow-btn" id="btnGenerateBriefing">🌅 GENERATE MORNING BRIEFING</button>
+            <button class="action-btn outline-btn" id="btnGenerateDebrief">🌙 GENERATE EVENING DEBRIEF</button>
+          </div>
+          <div class="research-results" id="companionFeed">
+            <div class="placeholder-msg">Click above to generate your personalized JARVIS morning briefing or evening debrief.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-research" class="hud-tab">
+        <div class="research-card glass-panel">
+          <h2 class="panel-header">AUTONOMOUS MULTI-SOURCE WEB RESEARCH</h2>
+          <p class="panel-desc">Query Wikipedia, DuckDuckGo, and arXiv concurrently with automatic fact verification and citations.</p>
+          <div class="research-input-group">
+            <input type="text" id="researchTopic" placeholder="Enter research query, e.g. 'Latest developments in quantum computing'...">
+            <button class="action-btn glow-btn" id="btnRunResearch">EXECUTE RESEARCH</button>
+          </div>
+          <div class="research-results" id="researchResults">
+            <div class="placeholder-msg">Enter a research topic above to initiate multi-source verification and report generation.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-knowledge" class="hud-tab">
+        <div class="knowledge-grid">
+          <div class="upload-panel glass-panel">
+            <h2 class="panel-header">INGEST DOCUMENTS (LOCAL RAG)</h2>
+            <p class="panel-desc">Upload or paste documents into your private offline knowledge base (PDF, DOCX, TXT, CSV, Code).</p>
+            <div class="drop-zone" id="dropZone">
+              <span class="drop-icon">📄</span>
+              <p>Drag and drop documents here or click to select</p>
+              <input type="file" id="fileInput" multiple style="display:none">
+            </div>
+            <div class="manual-ingest">
+              <input type="text" id="manualDocTitle" placeholder="Document title (e.g. physics_notes.txt)">
+              <textarea id="manualDocContent" rows="4" placeholder="Or paste raw text content here..."></textarea>
+              <button class="action-btn glow-btn" id="btnIngestText">INDEX INTO KNOWLEDGE BASE</button>
+            </div>
+          </div>
+
+          <div class="docs-panel glass-panel">
+            <h2 class="panel-header">INDEXED DOCUMENTS</h2>
+            <div class="doc-list" id="docList">
+              <div class="placeholder-msg">No personal documents indexed yet.</div>
+            </div>
+            <h3 class="sub-header">SEMANTIC RETRIEVAL PROBE</h3>
+            <div class="rag-search-bar">
+              <input type="text" id="ragQueryInput" placeholder="Query private knowledge base...">
+              <button class="action-btn outline-btn" id="btnQueryRAG">SEARCH</button>
+            </div>
+            <div class="rag-results" id="ragResults"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-memory" class="hud-tab">
+        <div class="memory-card glass-panel">
+          <div class="panel-header-row">
+            <h2 class="panel-header">LONG-TERM MEMORY REPOSITORY (AES-256 ENCRYPTED)</h2>
+            <div class="header-actions">
+              <button class="action-btn outline-btn" id="btnExportMemory">EXPORT BACKUP</button>
+              <button class="action-btn glow-btn" id="btnAddMemoryModalBtn">+ ADD MEMORY</button>
+            </div>
+          </div>
+          <div class="memory-filter-bar">
+            <input type="text" id="memorySearchInput" placeholder="Search memories by keyword...">
+          </div>
+          <div class="memory-list" id="memoryList"></div>
+        </div>
+      </section>
+
+      <section id="tab-permissions" class="hud-tab">
+        <div class="permissions-card glass-panel">
+          <h2 class="panel-header">ACCESS CONTROL & GUARDRAIL DASHBOARD</h2>
+          <p class="panel-desc">Configure granular device privileges. Destructive operations require explicit confirmation.</p>
+          <div class="permissions-table-wrapper">
+            <table class="hud-table">
+              <thead>
+                <tr>
+                  <th>CAPABILITY</th>
+                  <th>DESCRIPTION</th>
+                  <th>CURRENT POLICY</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="permissionsTableBody"></tbody>
+            </table>
+          </div>
+
+          <div class="dangerous-challenges-section" id="challengesSection">
+            <h3 class="sub-header warning-header">PENDING SAFETY CHALLENGES</h3>
+            <div id="challengesList">
+              <div class="placeholder-msg">No pending dangerous actions. All operations safe.</div>
+            </div>
+          </div>
+
+          <h3 class="sub-header">SECURITY AUDIT LOGS</h3>
+          <div class="audit-logs-wrapper">
+            <table class="hud-table audit-table">
+              <thead>
+                <tr>
+                  <th>TIMESTAMP</th>
+                  <th>TOOL</th>
+                  <th>STATUS</th>
+                  <th>METRICS</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-automations" class="hud-tab">
+        <div class="automations-card glass-panel">
+          <div class="panel-header-row">
+            <h2 class="panel-header">AUTONOMOUS ROUTINES & SCHEDULED TASKS</h2>
+            <button class="action-btn glow-btn" id="btnNewAutomationModal">+ NEW ROUTINE</button>
+          </div>
+          <div class="automation-list" id="automationList"></div>
+        </div>
+      </section>
+
+      <section id="tab-diagnostics" class="hud-tab">
+        <div class="diagnostics-card glass-panel">
+          <h2 class="panel-header">DIAGNOSTIC PROBES & AI CONFIGURATION</h2>
+          <div class="diag-controls">
+            <button class="action-btn glow-btn" id="btnRunSelfCheck">RUN SYSTEM SELF-CHECK</button>
+          </div>
+          <div class="diag-results" id="diagResults"></div>
+
+          <h3 class="sub-header">AI MODEL PROVIDER SELECTION</h3>
+          <div class="settings-grid">
+            <div class="setting-item">
+              <label>Active Provider</label>
+              <select id="selectProvider">
+                <option value="offline">Offline Local Engine (Zero internet, 100% free)</option>
+                <option value="ollama">Local Ollama (Llama 3 / Mistral)</option>
+                <option value="gemini">Google Gemini (Free Tier)</option>
+                <option value="openai_compatible">OpenAI-Compatible (Groq / LM Studio)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="hud-modal" id="modalEnrollVoice">
+    <div class="modal-box glass-panel">
+      <h3 class="modal-title">ENROLL VOICEPRINT BIOMETRICS</h3>
+      <div class="modal-body">
+        <p class="text-dim" style="font-size:14px;line-height:1.5;">
+          LADDU can recognize you by your unique vocal acoustics. Please click "Record Voiceprint Sample" and speak naturally:
+        </p>
+        <div style="background:rgba(0,0,0,0.4);border:1px dashed var(--neon-cyan);padding:14px;border-radius:6px;margin:8px 0;font-style:italic;color:#fff;">
+          "Hey Laddu, this is my voice authorization protocol."
+        </div>
+        <label>Your Name / Title</label>
+        <input type="text" id="inputEnrollName" placeholder="e.g. Tony / Boss / Alex" value="Boss">
+        <div id="enrollStatus" style="font-size:13px;color:var(--neon-green);margin-top:4px;"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="action-btn outline-btn" id="btnCancelEnroll">CANCEL</button>
+        <button class="action-btn glow-btn" id="btnStartEnrollRecord">RECORD VOICE SAMPLE</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hud-modal" id="modalMemory">
+    <div class="modal-box glass-panel">
+      <h3 class="modal-title">STORE LONG-TERM MEMORY</h3>
+      <div class="modal-body">
+        <label>Memory Key</label>
+        <input type="text" id="inputMemKey" placeholder="e.g. preferred_editor">
+        <label>Memory Value</label>
+        <input type="text" id="inputMemVal" placeholder="e.g. VS Code with Vim extension">
+        <label>Category</label>
+        <select id="selectMemCat">
+          <option value="preference">Preference</option>
+          <option value="project">Project Info</option>
+          <option value="personal">Personal</option>
+          <option value="fact">Factual</option>
+          <option value="security">Sensitive (AES-256)</option>
+        </select>
+        <div class="checkbox-row">
+          <input type="checkbox" id="checkMemSensitive">
+          <label for="checkMemSensitive">Encrypt using AES-256-GCM</label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="action-btn outline-btn" id="btnCancelMemory">CANCEL</button>
+        <button class="action-btn glow-btn" id="btnSaveMemory">SAVE MEMORY</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

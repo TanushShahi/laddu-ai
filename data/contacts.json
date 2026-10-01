@@ -1,0 +1,65 @@
+[
+  {
+    "id": "c_papa",
+    "name": "Papa",
+    "relationship": "father",
+    "phone": "+919876543210",
+    "notes": "",
+    "updatedAt": "2026-10-01T19:22:42.517Z"
+  },
+  {
+    "id": "c_mom",
+    "name": "Mom",
+    "relationship": "",
+    "phone": "8788409532",
+    "notes": "",
+    "updatedAt": "2026-09-27T14:02:55.103Z"
+  },
+  {
+    "id": "c_emergency",
+    "name": "Emergency",
+    "relationship": "emergency",
+    "phone": "112",
+    "notes": "Emergency Services"
+  },
+  {
+    "id": "c_1790518013629",
+    "name": "Series Wali Aaji",
+    "phone": "9322536784",
+    "relationship": "",
+    "notes": "",
+    "updatedAt": "2026-09-27T14:06:53.629Z"
+  },
+  {
+    "id": "c_1790518056875",
+    "name": "Chidkoli",
+    "phone": "8275898136",
+    "relationship": "",
+    "notes": "",
+    "updatedAt": "2026-09-27T14:07:36.876Z"
+  },
+  {
+    "id": "c_1790518356779",
+    "name": "High Law",
+    "phone": "8830963652",
+    "relationship": "",
+    "notes": "",
+    "updatedAt": "2026-09-27T14:12:36.780Z"
+  },
+  {
+    "id": "c_1790532138451",
+    "name": "Mummy ❤️",
+    "phone": "8788409532",
+    "relationship": "",
+    "notes": "",
+    "updatedAt": "2026-09-27T18:02:18.451Z"
+  },
+  {
+    "id": "c_1790532149305",
+    "name": "Chidkoli ✨💟",
+    "phone": "8275898136",
+    "relationship": "",
+    "notes": "",
+    "updatedAt": "2026-09-27T18:02:29.305Z"
+  }
+]

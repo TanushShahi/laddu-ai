@@ -1,0 +1,22 @@
+[
+  {
+    "id": "c6bfb858-af2d-46c2-bef2-85aa6813f0c9",
+    "name": "Morning System Briefing",
+    "schedule": "Daily at 08:00",
+    "goal": "Run system diagnostics and verify storage health",
+    "enabled": true,
+    "lastRunAt": null,
+    "lastResult": null,
+    "createdAt": "2026-09-27T08:23:05.405Z"
+  },
+  {
+    "id": "f097efa4-08cd-4053-b524-ce574dc139cc",
+    "name": "Workspace Cleanup Inspection",
+    "schedule": "Every Friday",
+    "goal": "Scan project folder for temporary artifacts",
+    "enabled": false,
+    "lastRunAt": null,
+    "lastResult": null,
+    "createdAt": "2026-09-27T08:23:05.412Z"
+  }
+]

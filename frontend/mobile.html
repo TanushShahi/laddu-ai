@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LADDU Mobile Companion</title>
+  
+  <!-- PWA & Mobile Web App Capabilities -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#00f0ff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LADDU">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png">
+  
+  <link rel="stylesheet" href="./css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      padding-bottom: 75px;
+    }
+    .mobile-header {
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(11, 17, 32, 0.95);
+      border-bottom: 1px solid var(--border-cyan);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .mobile-content {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .mobile-nav-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 60px;
+      background: rgba(11, 17, 32, 0.96);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid var(--border-cyan);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 100;
+    }
+    .m-nav-item {
+      color: var(--text-dim);
+      font-size: 11px;
+      font-family: var(--font-hud);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .m-nav-item.active {
+      color: var(--neon-cyan);
+    }
+    .m-icon {
+      font-size: 18px;
+    }
+    .mobile-voice-hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 0;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 26px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255,255,255,0.15);
+      transition: .3s;
+      border-radius: 26px;
+      border: 1px solid var(--border-cyan);
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 3px;
+      background-color: #fff;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: var(--neon-cyan);
+      box-shadow: 0 0 10px rgba(0,240,255,0.5);
+    }
+    input:checked + .slider:before {
+      transform: translateX(20px);
+      background-color: #070b14;
+    }
+    .contact-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(0,240,255,0.15);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body class="sci-fi-theme">
+  <!-- Mobile Header -->
+  <header class="mobile-header">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="reactor-mini"></div>
+      <div>
+        <div style="font-family:var(--font-hud);font-size:16px;color:#fff;letter-spacing:1px;">LADDU</div>
+        <div style="font-size:10px;color:var(--neon-cyan);">MOBILE COMPANION</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button id="mBtnOpenContacts" class="action-btn outline-btn" style="padding:4px 8px;font-size:11px;" title="Contacts">
+        📞
+      </button>
+      <button id="mBtnOpenSettings" class="action-btn outline-btn" style="padding:4px 8px;font-size:11px;" title="Settings">
+        ⚙️
+      </button>
+      <div class="status-indicator">
+        <span class="pulse-dot"></span>
+        <span id="mStatusText" style="font-size:11px;">ONLINE</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="mobile-content">
+    <!-- Auto-Dial Floating Action Banner -->
+    <div id="mAutoDialBanner" style="display:none;background:linear-gradient(135deg, #00f0ff, #0088ff);color:#000;padding:12px 16px;border-radius:10px;font-weight:700;box-shadow:0 8px 32px rgba(0,240,255,0.4);align-items:center;justify-content:space-between;cursor:pointer;animation:pulse 1.5s infinite;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:22px;">📞</span>
+        <div>
+          <div style="font-size:10px;letter-spacing:1px;font-weight:800;opacity:0.85;">AUTOMATIC PHONE DIALER</div>
+          <div id="mAutoDialText" style="font-size:13px;font-weight:800;">CALLING NOW...</div>
+        </div>
+      </div>
+      <button id="mBtnTriggerAutoDial" class="action-btn glow-btn" style="background:#000;color:#00f0ff;border:none;padding:6px 14px;font-size:11px;font-weight:800;border-radius:6px;">
+        OPEN DIALER ↗
+      </button>
+    </div>
+
+    <!-- Switch to Secure HTTPS Banner (Unlocks Mobile Microphone) -->
+    <div id="mHttpsBanner" style="display:none;background:linear-gradient(135deg, rgba(0, 255, 170, 0.2), rgba(0, 240, 255, 0.25));border:1px solid var(--neon-green);border-radius:10px;padding:12px 14px;align-items:center;justify-content:space-between;box-shadow:0 0 15px rgba(0,255,170,0.3);gap:10px;animation:pulse 2s infinite;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:22px;">🔒</span>
+        <div>
+          <div style="font-family:var(--font-hud);font-size:12px;color:var(--neon-green);font-weight:700;">SWITCH TO SECURE HTTPS</div>
+          <div style="font-size:10px;color:#fff;">Required by Android Chrome to unlock microphone & voice input</div>
+        </div>
+      </div>
+      <button class="action-btn glow-btn" id="mBtnSwitchHttps" style="padding:6px 12px;font-size:11px;white-space:nowrap;background:var(--neon-green);color:#000;font-weight:700;border:none;">
+        SWITCH TO HTTPS ↗
+      </button>
+    </div>
+
+    <!-- Voice / Microphone Help Banner -->
+    <div id="mVoiceHelpBanner" style="display:none;background:rgba(255,170,0,0.15);border:1px solid var(--neon-amber);border-radius:8px;padding:10px 14px;font-size:11px;color:#fff;align-items:center;justify-content:space-between;gap:8px;">
+      <span id="mVoiceHelpText"></span>
+      <button onclick="document.getElementById('mVoiceHelpBanner').style.display='none'" style="background:none;border:none;color:#fff;font-size:14px;cursor:pointer;padding:0 4px;">✕</button>
+    </div>
+
+    <!-- PWA Install Banner -->
+    <div id="mInstallBanner" style="display:none;background:linear-gradient(135deg,rgba(0,240,255,0.18),rgba(0,119,255,0.25));border:1px solid var(--neon-cyan);border-radius:10px;padding:12px 16px;align-items:center;justify-content:space-between;box-shadow:0 0 15px rgba(0,240,255,0.2);">
+      <div>
+        <div style="font-family:var(--font-hud);font-size:13px;color:#fff;font-weight:700;">📲 INSTALL LADDU APP</div>
+        <div style="font-size:11px;color:var(--text-dim);" id="mInstallHint">Install on home screen for full-screen & background access</div>
+      </div>
+      <button class="action-btn glow-btn" id="mBtnInstall" style="padding:8px 14px;font-size:11px;">INSTALL</button>
+    </div>
+
+    <!-- Siri / Always-On Background Wake Word Toggle -->
+    <div class="glass-panel" style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:22px;">⚡</span>
+        <div>
+          <div style="font-family:var(--font-hud);font-size:13px;color:#fff;font-weight:700;">ALWAYS-ON WAKE (SIRI MODE)</div>
+          <div style="font-size:10px;color:var(--text-dim);" id="mSiriStatusText">Hands-free background wake-word listening: Off</div>
+        </div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="mToggleSiriMode">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Voice Visualizer & Push-To-Talk Hero -->
+    <div class="glass-panel mobile-voice-hero">
+      <div class="reactor-center-status">
+        <span class="status-label">VOICE SENSOR</span>
+        <span class="status-state" id="mVoiceState">STANDBY</span>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;">
+        <button class="action-btn glow-btn" id="mBtnVoice" style="padding:14px 24px;font-size:13px;">
+          <span class="btn-icon">🎙</span> PUSH TO COMMUNICATE
+        </button>
+        <button class="action-btn outline-btn" id="mBtnInterrupt" style="padding:14px 16px;font-size:13px;">
+          ⏹ STOP
+        </button>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:10px;">
+        Wake Word: <strong style="color:var(--neon-cyan);">"Hey Laddu"</strong> (e.g. "Hey Laddu call Papa")
+      </div>
+    </div>
+
+    <!-- Mobile Conversation Feed -->
+    <div class="glass-panel" style="flex:1;min-height:350px;display:flex;flex-direction:column;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 class="panel-header" style="font-size:13px;margin:0;">CONVERSATION FEED</h3>
+        <span id="mActiveRoleBadge" style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(0,240,255,0.15);color:var(--neon-cyan);border:1px solid rgba(0,240,255,0.3);">
+          ⚡ ASSISTANT
+        </span>
+      </div>
+      <div class="chat-messages" id="mChatMessages" style="flex:1;max-height:380px;overflow-y:auto;">
+        <div class="message assistant">
+          <div class="msg-avatar">L</div>
+          <div class="msg-body">
+            <div class="msg-sender">LADDU</div>
+            <div class="msg-text">Welcome! I am LADDU — ready on your mobile. You can speak commands like <em>"Call Papa"</em>, <em>"Open YouTube"</em>, or chat naturally with me as a friend or mentor.</div>
+          </div>
+        </div>
+      </div>
+      <!-- Attachment preview strip -->
+      <div id="mAttachmentBar" style="display:none;padding:6px 10px;background:rgba(0,0,0,0.6);border-top:1px solid var(--border-cyan);align-items:center;gap:6px;flex-wrap:wrap;"></div>
+      <input type="file" id="mFileInput" accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx" style="display:none;">
+      <input type="file" id="mCamInput" accept="image/*" capture="environment" style="display:none;">
+
+      <div class="chat-input-bar" style="margin-top:10px;display:flex;gap:6px;align-items:center;">
+        <button class="action-btn outline-btn" id="mBtnAttach" title="Attach Document / Photo" style="padding:10px 12px;font-size:16px;">📎</button>
+        <button class="action-btn outline-btn" id="mBtnCamera" title="Snap Photo" style="padding:10px 12px;font-size:16px;">📷</button>
+        <input type="text" id="mChatInput" placeholder="Command, attach image, or speak..." style="flex:1;padding:12px;background:rgba(0,0,0,0.4);border:1px solid var(--border-cyan);color:#fff;border-radius:8px;font-size:14px;">
+        <button class="action-btn glow-btn" id="mBtnSend" style="padding:12px 16px;">SEND</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="mobile-nav-bar">
+    <div class="m-nav-item active" onclick="location.href='./mobile.html'">
+      <span class="m-icon">💬</span>
+      <span>VOICE/CHAT</span>
+    </div>
+    <div class="m-nav-item" onclick="openContactsModal()">
+      <span class="m-icon">📞</span>
+      <span>CONTACTS</span>
+    </div>
+    <div class="m-nav-item" onclick="openSettingsModal()">
+      <span class="m-icon">⚙️</span>
+      <span>SETTINGS</span>
+    </div>
+    <div class="m-nav-item" onclick="location.href='./'">
+      <span class="m-icon">🖥️</span>
+      <span>FULL HUD</span>
+    </div>
+  </nav>
+
+  <!-- Contacts Modal -->
+  <div class="hud-modal" id="modalContacts" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:200;align-items:center;justify-content:center;padding:16px;">
+    <div class="glass-panel" style="width:100%;max-width:380px;padding:20px;border:1px solid var(--border-cyan);border-radius:10px;max-height:85vh;display:flex;flex-direction:column;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-family:var(--font-hud);font-size:14px;color:var(--neon-cyan);margin:0;">📞 CONTACTS & SPEED DIAL</h3>
+        <button onclick="closeContactsModal()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">✕</button>
+      </div>
+      <p style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">
+        Say <em>"Call [Name]"</em> anytime to automatically trigger the phone dialer.
+      </p>
+      
+      <div id="mContactsList" style="flex:1;overflow-y:auto;margin-bottom:14px;">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div style="background:rgba(0,0,0,0.4);padding:12px;border-radius:8px;border:1px solid var(--border-cyan);">
+        <div style="font-size:11px;color:var(--neon-cyan);font-weight:700;margin-bottom:8px;">+ ADD / UPDATE CONTACT</div>
+        <input type="text" id="mNewContactName" placeholder="Name or Relation (e.g. Papa)" style="width:100%;padding:8px;background:rgba(0,0,0,0.5);border:1px solid rgba(0,240,255,0.3);color:#fff;border-radius:4px;margin-bottom:6px;font-size:12px;">
+        <input type="tel" id="mNewContactPhone" placeholder="Phone Number (e.g. +91 98765 43210)" style="width:100%;padding:8px;background:rgba(0,0,0,0.5);border:1px solid rgba(0,240,255,0.3);color:#fff;border-radius:4px;margin-bottom:8px;font-size:12px;">
+        <button class="action-btn glow-btn" id="mBtnSaveContact" style="width:100%;padding:8px;font-size:12px;">SAVE CONTACT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal (Gemini API Key & AI Engine) -->
+  <div class="hud-modal" id="modalSettings" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:200;align-items:center;justify-content:center;padding:16px;">
+    <div class="glass-panel" style="width:100%;max-width:380px;padding:20px;border:1px solid var(--border-cyan);border-radius:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-family:var(--font-hud);font-size:14px;color:var(--neon-cyan);margin:0;">⚙️ AI & ENGINE SETTINGS</h3>
+        <button onclick="closeSettingsModal()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">✕</button>
+      </div>
+
+      <div style="margin-bottom:14px;padding:10px;background:rgba(0,240,255,0.06);border:1px solid rgba(0,240,255,0.25);border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:12px;color:#fff;font-weight:700;">📞 Auto-Place Phone Calls</div>
+          <div style="font-size:10px;color:var(--text-dim);">Immediately trigger phone dialer on call commands</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="mToggleAutoDial" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">Assistant Voice:</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="mSelectVoiceGender" style="flex:1;padding:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border-cyan);color:#fff;border-radius:6px;font-size:12px;">
+            <option value="female">👩 Female Voice (Default / Recommended)</option>
+            <option value="male">👨 Male Voice</option>
+          </select>
+          <button class="action-btn outline-btn" id="mBtnTestVoice" style="padding:8px 12px;font-size:11px;white-space:nowrap;">🔊 TEST</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">Speech Accent & Dialect:</label>
+        <select id="mSelectSpeechLang" style="width:100%;padding:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border-cyan);color:#fff;border-radius:6px;font-size:12px;">
+          <option value="en-IN">🇮🇳 Indian English (Recommended for "Laddu")</option>
+          <option value="en-US">🇺🇸 US English</option>
+          <option value="en-GB">🇬🇧 UK English</option>
+          <option value="hi-IN">🇮🇳 हिंदी (Hindi / Hinglish)</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">AI Provider Engine:</label>
+        <select id="mSelectProvider" style="width:100%;padding:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border-cyan);color:#fff;border-radius:6px;font-size:13px;">
+          <option value="gemini">Google Gemini (100% Free Super-Intelligence)</option>
+          <option value="offline">Offline Local Engine (Built-in Free & Private)</option>
+          <option value="ollama">Local Ollama (Llama 3 / Mistral)</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">Google Gemini Free API Key:</label>
+        <input type="password" id="mGeminiKeyInput" placeholder="Paste Gemini API Key (optional)" style="width:100%;padding:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border-cyan);color:#fff;border-radius:6px;font-size:12px;">
+        <div style="font-size:10px;color:var(--neon-cyan);margin-top:4px;">
+          Free key (no credit card): <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--neon-cyan);text-decoration:underline;">aistudio.google.com</a>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">Remote Server URL (Optional):</label>
+        <input type="text" id="mRemoteServerUrl" placeholder="https://xxxx.trycloudflare.com (or leave empty)" style="width:100%;padding:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border-cyan);color:#fff;border-radius:6px;font-size:11px;">
+        <span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">Connect to your laptop over Cloudflare Tunnel or Cloud host from anywhere.</span>
+      </div>
+
+      <div style="display:flex;gap:6px;margin-bottom:10px;">
+        <button class="action-btn outline-btn" id="mBtnTestGemini" style="padding:6px 12px;font-size:11px;width:100%;">🧪 TEST GEMINI KEY</button>
+      </div>
+      <div id="mTestStatus" style="font-size:11px;min-height:16px;margin-bottom:8px;"></div>
+
+      <div id="mSettingsStatus" style="font-size:11px;color:var(--neon-green);margin-bottom:12px;min-height:16px;"></div>
+
+      <button class="action-btn glow-btn" id="mBtnSaveSettings" style="width:100%;padding:10px;font-size:12px;">
+        SAVE & APPLY SETTINGS
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. STATE & ELEMENTS
+    // ==========================================
+    const mInput = document.getElementById('mChatInput');
+    const mBtnSend = document.getElementById('mBtnSend');
+    const mBtnVoice = document.getElementById('mBtnVoice');
+    const mBtnInterrupt = document.getElementById('mBtnInterrupt');
+    const mMessages = document.getElementById('mChatMessages');
+    const mVoiceState = document.getElementById('mVoiceState');
+    const mToggleSiri = document.getElementById('mToggleSiriMode');
+    const mSiriStatusText = document.getElementById('mSiriStatusText');
+    const mInstallBanner = document.getElementById('mInstallBanner');
+    const mBtnInstall = document.getElementById('mBtnInstall');
+    
+    let deferredInstallPrompt = null;
+    let isSpeakingAudio = false;
+    let siriModeActive = false;
+    let wakeLockSentinel = null;
+    let audioKeepAliveCtx = null;
+    let recognition = null;
+    let isRecognizing = false;
+
+    // ==========================================
+    // 2. PWA SERVICE WORKER & INSTALL PROMPT
+    // ==========================================
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          console.log('[LADDU PWA] ServiceWorker registered.');
+        }).catch(err => {
+          console.warn('[LADDU PWA] ServiceWorker warning:', err);
+        });
+      });
+    }
+
+    // Capture browser PWA install event
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      mInstallBanner.style.display = 'flex';
+      console.log('[LADDU PWA] Install prompt captured.');
+    });
+
+    mBtnInstall.addEventListener('click', async () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          mInstallBanner.style.display = 'none';
+        }
+        deferredInstallPrompt = null;
+      } else {
+        alert('To install on Android: Tap Chrome menu (⋮) -> "Install App" or "Add to Home screen".');
+      }
+    });
+
+    window.addEventListener('appinstalled', () => {
+      mInstallBanner.style.display = 'none';
+      console.log('[LADDU PWA] App installed successfully.');
+    });
+
+    // Check if running in standalone mode (already installed)
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+      mInstallBanner.style.display = 'none';
+    } else {
+      // Show hint if install prompt hasn't triggered after 2s
+      setTimeout(() => {
+        if (mInstallBanner.style.display === 'none' && !window.navigator.standalone) {
+          mInstallBanner.style.display = 'flex';
+        }
+      }, 2000);
+    }
+
+    // ==========================================
+    // 3. CHAT & SPEECH OUTPUT
+    // ==========================================
+    // ==========================================
+    // 3. CHAT & SPEECH OUTPUT
+    // ==========================================
+    function formatAssistantMarkdown(rawText) {
+      if (!rawText) return '';
+      let str = rawText;
+      // Convert markdown links [title](url) to html <a> tags
+      str = str.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:var(--neon-cyan);text-decoration:underline;">$1 ↗</a>');
+      // Bold **text**
+      str = str.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      // Italic *text*
+      str = str.replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');
+      // Backticks `code`
+      str = str.replace(/`([^`]+)`/g, '<code style="background:rgba(0,240,255,0.15);padding:2px 4px;border-radius:3px;font-family:monospace;font-size:12px;">$1</code>');
+      // Line breaks to <br>
+      str = str.replace(/\n/g, '<br>');
+      return str;
+    }
+
+    function appendMessage(role, text, actionMeta = null, attachments = []) {
+      const el = document.createElement('div');
+      el.className = `message ${role}`;
+      let actionCardHtml = '';
+      if (actionMeta) {
+        if (actionMeta.action === 'CALL_PHONE' || actionMeta.telUri) {
+          const contactLabel = actionMeta.contact ? `${actionMeta.contact} &bull; ` : '';
+          const phoneNum = actionMeta.phoneNumber || '';
+          actionCardHtml = `
+            <div class="call-action-card" style="margin-top:10px;padding:12px;background:rgba(0,240,255,0.08);border:1px solid var(--neon-cyan);border-radius:8px;">
+              <div style="font-family:var(--font-hud);font-size:11px;color:var(--neon-cyan);margin-bottom:6px;display:flex;align-items:center;gap:6px;letter-spacing:1px;">
+                <span>📞</span> DIRECT CALL DISPATCH
+              </div>
+              <div style="font-size:13px;color:#fff;font-weight:600;margin-bottom:10px;">
+                ${contactLabel}${phoneNum}
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <a href="${actionMeta.telUri}" class="action-btn glow-btn" style="text-align:center;text-decoration:none;padding:12px 16px;font-size:13px;font-weight:700;">
+                  📞 TAP TO CALL: ${phoneNum || 'DIAL'}
+                </a>
+                ${actionMeta.waUri ? `
+                <a href="${actionMeta.waUri}" target="_blank" class="action-btn" style="text-align:center;text-decoration:none;padding:10px 14px;font-size:12px;background:#25D366;color:#fff;border:none;">
+                  💬 WHATSAPP CALL / CHAT
+                </a>` : ''}
+              </div>
+            </div>
+          `;
+        } else if (actionMeta.action === 'OPEN_URL' || actionMeta.url) {
+          const appName = actionMeta.app || 'Web Resource';
+          actionCardHtml = `
+            <div class="url-action-card" style="margin-top:10px;padding:10px 12px;background:rgba(0,255,136,0.08);border:1px solid var(--neon-green);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+              <div style="font-size:12px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:65%;">
+                🌐 <strong>${appName}</strong>
+              </div>
+              <a href="${actionMeta.url}" target="_blank" class="action-btn glow-btn" style="text-decoration:none;padding:8px 16px;font-size:12px;white-space:nowrap;">
+                OPEN ↗
+              </a>
+            </div>
+          `;
+        }
+      }
+
+      let attachmentsHtml = '';
+      if (attachments && attachments.length > 0) {
+        attachmentsHtml = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">' +
+          attachments.map(att => {
+            if (att.type === 'image' || (att.mimeType && att.mimeType.startsWith('image/'))) {
+              return `<img src="${att.data || att.preview}" style="max-width:180px;max-height:140px;border-radius:6px;border:1px solid var(--border-cyan);object-fit:cover;">`;
+            } else {
+              return `<div style="background:rgba(0,240,255,0.1);padding:6px 10px;border-radius:6px;border:1px solid var(--border-cyan);font-size:11px;color:#fff;">📄 ${att.filename || 'Document'}</div>`;
+            }
+          }).join('') + '</div>';
+      }
+
+      const bodyHtml = role === 'assistant' ? formatAssistantMarkdown(text) : text;
+
+      const roleObj = actionMeta?.role;
+      let mobileRoleTag = '';
+      if (role === 'assistant' && roleObj) {
+        let mLabel = '';
+        if (roleObj.id === 'friend') mLabel = 'FRIEND';
+        else if (roleObj.id === 'assistant') mLabel = 'JARVIS';
+        else if (roleObj.id === 'teacher') mLabel = 'TEACHER';
+        else if (roleObj.id === 'mentor') mLabel = 'MENTOR';
+        else if (roleObj.id === 'counselor') mLabel = 'WELLNESS';
+        else mLabel = (roleObj.name ? roleObj.name.split(' ').pop() : '').toUpperCase();
+        if (mLabel) {
+          mobileRoleTag = ` <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(0,240,255,0.15);color:var(--neon-cyan);margin-left:6px;border:1px solid rgba(0,240,255,0.3);">${roleObj.icon || ''} ${mLabel}</span>`;
+        }
+      }
+      const avatarIcon = role === 'assistant' ? (roleObj?.icon || 'L') : 'U';
+
+      el.innerHTML = `
+        <div class="msg-avatar">${avatarIcon}</div>
+        <div class="msg-body">
+          <div class="msg-sender">${role === 'assistant' ? `LADDU${mobileRoleTag}` : 'USER'}</div>
+          <div class="msg-text">${attachmentsHtml}${bodyHtml}${actionCardHtml}</div>
+        </div>
+      `;
+      mMessages.appendChild(el);
+      mMessages.scrollTop = mMessages.scrollHeight;
+    }
+
+    function getOptimalVoiceMobile(gender = (localStorage.getItem('laddu_voice_gender') || 'female')) {
+      if (!('speechSynthesis' in window)) return null;
+      const voices = window.speechSynthesis.getVoices();
+      if (!voices || voices.length === 0) return null;
+
+      const currentLang = localStorage.getItem('laddu_speech_lang') || 'en-IN';
+      const langPrefix = currentLang.split('-')[0].toLowerCase();
+
+      if (gender === 'female') {
+        const femaleKeywords = [
+          'female', 'zira', 'heera', 'neerja', 'samantha', 'victoria', 'karen',
+          'veena', 'swara', 'geeta', 'sangeeta', 'priya', 'kalpana', 'hazel',
+          'susan', 'catherine', 'eva', 'serena', 'moira', 'tessa', 'fiona',
+          'allison', 'ava', 'jenny', 'aria', 'natasha'
+        ];
+
+        let match = voices.find(v => v.lang.toLowerCase() === currentLang.toLowerCase() && femaleKeywords.some(kw => v.name.toLowerCase().includes(kw)));
+        if (!match) match = voices.find(v => v.lang.toLowerCase().startsWith(langPrefix) && femaleKeywords.some(kw => v.name.toLowerCase().includes(kw)));
+        if (!match) match = voices.find(v => v.lang.toLowerCase().startsWith('en') && femaleKeywords.some(kw => v.name.toLowerCase().includes(kw)));
+        if (!match) match = voices.find(v => femaleKeywords.some(kw => v.name.toLowerCase().includes(kw)));
+        if (!match) match = voices.find(v => /female/i.test(v.name));
+        if (!match) match = voices.find(v => v.lang.toLowerCase() === currentLang.toLowerCase());
+        return match || voices[0];
+      } else {
+        const maleKeywords = ['male', 'david', 'mark', 'george', 'rishi', 'ravi', 'alex', 'daniel', 'fred', 'oliver', 'aaron'];
+        let match = voices.find(v => maleKeywords.some(kw => v.name.toLowerCase().includes(kw)));
+        return match || voices[0];
+      }
+    }
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = () => { getOptimalVoiceMobile(); };
+    }
+
+    function speakMobile(text, onDone = () => {}) {
+      if (!('speechSynthesis' in window)) {
+        onDone();
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+      isSpeakingAudio = true;
+      mVoiceState.textContent = 'SPEAKING...';
+
+      // Temporarily halt recognition to prevent acoustic loop
+      if (recognition && isRecognizing) {
+        try { recognition.abort(); } catch {}
+      }
+
+      const u = new SpeechSynthesisUtterance(text);
+      const v = getOptimalVoiceMobile();
+      if (v) u.voice = v;
+      const isFemale = (localStorage.getItem('laddu_voice_gender') || 'female') === 'female';
+      u.rate = 1.0;
+      u.pitch = isFemale ? 1.15 : 1.0;
+
+      const finishSpeech = () => {
+        // Echo cancellation grace period
+        setTimeout(() => {
+          isSpeakingAudio = false;
+          mVoiceState.textContent = siriModeActive ? 'ALWAYS LISTENING...' : 'STANDBY';
+          if (siriModeActive && recognition) {
+            try { recognition.start(); } catch {}
+          }
+          onDone();
+        }, 450);
+      };
+
+      u.onend = finishSpeech;
+      u.onerror = finishSpeech;
+
+      window.speechSynthesis.speak(u);
+    }
+
+    // ==========================================
+    // 3b. STANDALONE MOBILE ENGINE (OFFLINE WHEN LAPTOP IS OFF)
+    // ==========================================
+    const StandaloneMobileEngine = {
+      getContacts() {
+        try {
+          const stored = localStorage.getItem('laddu_contacts');
+          if (stored) return JSON.parse(stored);
+        } catch {}
+        const defaultContacts = [
+          { id: 'c_papa', name: 'Papa', relationship: 'father', phone: '+919876543210', notes: 'Father' },
+          { id: 'c_mom', name: 'Mom', relationship: 'mother', phone: '+919876543211', notes: 'Mother' },
+          { id: 'c_emergency', name: 'Emergency', relationship: 'emergency', phone: '112', notes: 'Emergency Services' }
+        ];
+        this.saveContacts(defaultContacts);
+        return defaultContacts;
+      },
+
+      saveContacts(list) {
+        try {
+          localStorage.setItem('laddu_contacts', JSON.stringify(list));
+        } catch {}
+      },
+
+      findContact(query) {
+        if (!query) return null;
+        const q = query.trim().toLowerCase();
+        const contacts = this.getContacts();
+        const aliases = {
+          'papa': ['papa', 'dad', 'father', 'daddy', 'appa'],
+          'dad': ['papa', 'dad', 'father', 'daddy', 'appa'],
+          'father': ['papa', 'dad', 'father', 'daddy', 'appa'],
+          'mom': ['mom', 'mother', 'mummy', 'mama', 'amma'],
+          'mother': ['mom', 'mother', 'mummy', 'mama', 'amma'],
+          'mummy': ['mom', 'mother', 'mummy', 'mama', 'amma'],
+          'emergency': ['emergency', 'police', 'ambulance', '112']
+        };
+
+        let matchAliases = [q];
+        for (const [key, list] of Object.entries(aliases)) {
+          if (list.includes(q)) {
+            matchAliases = list;
+            break;
+          }
+        }
+
+        return contacts.find(c => {
+          const cName = (c.name || '').toLowerCase();
+          const cRel = (c.relationship || '').toLowerCase();
+          return matchAliases.some(alias => cName === alias || cName.includes(alias) || cRel === alias);
+        }) || null;
+      },
+
+      async process(rawText, options = {}) {
+        let text = (rawText || '').trim().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]+$/, '').trim();
+        let cleanLower = text.toLowerCase()
+          .replace(/\s+on\s+my\s+(?:mobile|phone|pc|computer|laptop|tab|tablet|device)$/i, '')
+          .trim();
+
+        // Multilingual & Hinglish Normalizations
+        const hindiCallMatch = cleanLower.match(/^(.+?)\s+ko\s+(?:call|phone|dial|ring)\s*(?:karo|lagao|karna)?$/i) ||
+                               cleanLower.match(/^(.+?)\s+को\s*(?:कॉल|फोन|कॉल करो|फोन लगाओ|कॉल लगाओ)?$/i);
+        if (hindiCallMatch) {
+          cleanLower = `call ${hindiCallMatch[1].trim()}`;
+          text = cleanLower;
+        }
+        const hindiOpenMatch = cleanLower.match(/^(.+?)\s+(?:kholo|chalao|start karo|open karo)$/i) ||
+                               cleanLower.match(/^(.+?)\s+(?:खोलो|चलाओ)$/i);
+        if (hindiOpenMatch && !/^(?:call|phone)/i.test(hindiOpenMatch[1])) {
+          cleanLower = `open ${hindiOpenMatch[1].trim()}`;
+          text = cleanLower;
+        }
+        if (/^(?:मौसम कैसा है|aaj ka mausam|mausam kaisa hai|weather kaisa hai)$/i.test(cleanLower)) {
+          cleanLower = 'what is the weather';
+          text = cleanLower;
+        }
+
+        // 1. Phone Call Intent
+        const callMatch = cleanLower.match(/^(?:call|phone|dial|ring|make\s+a\s+call\s+to|place\s+a\s+call\s+to)\s+(.+)$/i);
+        if (callMatch) {
+          const target = callMatch[1].trim();
+          const phoneDigits = target.replace(/[^0-9+]/g, '');
+
+          // Direct phone number
+          if (phoneDigits.length >= 7 && /^[\+]?[0-9\s\-]+$/.test(target)) {
+            const cleanDigits = phoneDigits.replace(/[^0-9]/g, '');
+            const waDigits = cleanDigits.length === 10 ? ('91' + cleanDigits) : cleanDigits;
+            const telUri = `tel:${phoneDigits.startsWith('+') ? phoneDigits : (phoneDigits.length === 10 ? '+91' + phoneDigits : phoneDigits)}`;
+            const waUri = `https://wa.me/${waDigits}`;
+            return {
+              content: `Dialing ${target} now...`,
+              action: 'CALL_PHONE',
+              contact: target,
+              phoneNumber: phoneDigits,
+              telUri,
+              waUri,
+              model: 'standalone-telephony'
+            };
+          }
+
+          // Contact Lookup
+          const contact = this.findContact(target);
+          if (contact && contact.phone && contact.phone.trim().length >= 3) {
+            const phone = contact.phone.trim();
+            const cleanDigits = phone.replace(/[^0-9]/g, '');
+            const waDigits = cleanDigits.length === 10 ? ('91' + cleanDigits) : cleanDigits;
+            const telUri = `tel:${phone.startsWith('+') ? phone : (phone.length === 10 ? '+91' + phone : phone)}`;
+            const waUri = `https://wa.me/${waDigits}`;
+            return {
+              content: `Calling ${contact.name} (${contact.phone}) now...`,
+              action: 'CALL_PHONE',
+              contact: contact.name,
+              phoneNumber: contact.phone,
+              telUri,
+              waUri,
+              model: 'standalone-telephony'
+            };
+          }
+
+          return {
+            content: `I don't have a phone number for "${target}" in local contacts yet. You can add it in the Contacts tab!`,
+            model: 'standalone-telephony'
+          };
+        }
+
+        // 2. Open App / Web Service Intent
+        const openMatch = cleanLower.match(/^(?:open|launch|start|go\s+to|navigate\s+to|visit)\s+(.+)$/i);
+        if (openMatch) {
+          const target = openMatch[1].trim().toLowerCase();
+          const webMap = {
+            'instagram': 'https://www.instagram.com',
+            'insta': 'https://www.instagram.com',
+            'facebook': 'https://www.facebook.com',
+            'fb': 'https://www.facebook.com',
+            'youtube': 'https://www.youtube.com',
+            'yt': 'https://www.youtube.com',
+            'whatsapp': 'https://web.whatsapp.com',
+            'gmail': 'https://mail.google.com',
+            'mail': 'https://mail.google.com',
+            'google': 'https://www.google.com',
+            'maps': 'https://maps.google.com',
+            'spotify': 'https://open.spotify.com',
+            'twitter': 'https://x.com',
+            'x': 'https://x.com',
+            'chatgpt': 'https://chatgpt.com',
+            'netflix': 'https://www.netflix.com',
+            'amazon': 'https://www.amazon.com',
+            'flipkart': 'https://www.flipkart.com',
+            'camera': 'camera'
+          };
+
+          const url = webMap[target] || `https://www.${target.replace(/[^a-z0-9]/g, '')}.com`;
+          return {
+            content: `Opening ${openMatch[1]} now.`,
+            action: 'OPEN_URL',
+            url,
+            app: openMatch[1],
+            model: 'standalone-launcher'
+          };
+        }
+
+        // 3. Direct Gemini Cloud Call from mobile if key present (Multimodal + Google Search)
+        const geminiKey = localStorage.getItem('laddu_gemini_key') || '';
+        if (geminiKey) {
+          try {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+            const parts = [
+              { text: `You are LADDU, an AI assistant inspired by JARVIS. Respond helpfully, intelligently and concisely. User says: ${text}` }
+            ];
+
+            if (options?.attachedItems) {
+              for (const item of options.attachedItems) {
+                if (item.type === 'image' && item.data) {
+                  parts.push({
+                    inlineData: {
+                      mimeType: item.mimeType || 'image/jpeg',
+                      data: item.data.replace(/^data:image\/[a-z]+;base64,/, '')
+                    }
+                  });
+                }
+              }
+            }
+
+            const gRes = await fetch(apiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ role: 'user', parts }],
+                tools: [{ googleSearch: {} }] // Perplexity-style live search grounding!
+              })
+            });
+            const gData = await gRes.json();
+            const reply = gData?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (reply) {
+              const citations = [];
+              const grounding = gData?.candidates?.[0]?.groundingMetadata;
+              if (grounding?.groundingChunks) {
+                for (const chunk of grounding.groundingChunks) {
+                  if (chunk.web) citations.push({ source: chunk.web.title, url: chunk.web.uri });
+                }
+              }
+              return { content: reply, model: 'mobile-gemini-cloud', citations };
+            }
+          } catch (e) {
+            console.warn('Direct Gemini call error:', e);
+          }
+        }
+
+        // 4. Standalone Math Calculation (Fixes ? and word operators)
+        let mathText = cleanLower.replace(/[?!.]+$/, '').trim();
+        mathText = mathText.replace(/^(?:calculate|what is|what's|whats|compute|solve|how much is|evaluate)\s+/i, '').trim();
+        mathText = mathText.replace(/\bplus\b/g, '+').replace(/\bminus\b/g, '-').replace(/\btimes\b|\bmultiplied by\b/g, '*').replace(/\bdivided by\b/g, '/');
+        mathText = mathText.replace(/([0-9.]+)\s*(?:%|percent)\s*of\s*([0-9.]+)/gi, '($1/100)*$2');
+        mathText = mathText.replace(/\^/g, '**');
+
+        if (/^[0-9\s\+\-\*\/\%\(\)\.\,]+$/.test(mathText) && /[0-9]/.test(mathText) && /[+\-*\/%]/.test(mathText)) {
+          try {
+            const clean = mathText.replace(/,/g, '');
+            const res = new Function(`return (${clean});`)();
+            if (typeof res === 'number' && !isNaN(res)) {
+              const formatted = Number.isInteger(res) ? res.toLocaleString('en-US') : (Math.round(res * 10000) / 10000).toLocaleString('en-US');
+              return { content: `${text.replace(/[?!.]+$/, '')} = **${formatted}**`, model: 'standalone-math' };
+            }
+          } catch {}
+        }
+
+        // 5. Standby / Sleep / Frustration
+        if (/(?:go to sleep|just go to sleep|sleep now|good\s*night|shut up|be quiet|leave me alone|stop talking|take a rest|take a break|can'?t do anything|cannot do anything|you are useless|you'?re useless)\b/i.test(cleanLower)) {
+          return {
+            content: "Understood. I apologize if I let you down earlier. I'm stepping back and entering standby mode so you can rest. Whenever you need me or want to chat again, just say **\"Hey Laddu\"**. Have a peaceful rest! 🌙",
+            model: 'standalone-mobile'
+          };
+        }
+
+        // 6. Emotional check-ins, Feeling Low, Cheering Up, and Friendship
+        if (/(?:feeling low|feel low|felt low|feeling down|feel down|sad|cheer me up|cheer up|unhappy|lonely|depressed|had a bad day|rough day|nobody to talk to|talk to me|act as a friend|be my friend|can we be friends|can we have a conversation|talk like a friend|cheer me)/i.test(cleanLower)) {
+          return {
+            content: "Hey, I'm really sorry to hear that you're feeling down, but I am so glad you reached out to me. Of course I will be your friend! You're never alone when I'm here. 💛\n\nTake a slow, deep breath and give yourself credit for getting through today. Whatever is weighing on your mind, we can talk through it — or if you want to take your mind off things, we can talk about movies, music, games, funny stories, or dreams.\n\nTell me, what's been bothering you, or what would you love to talk about right now?",
+            model: 'standalone-friend'
+          };
+        }
+
+        // 7. Praise / Gratitude
+        if (/(?:thank you|thanks|good job|awesome|love you|you are the best|you're amazing|are we friends|i like you|you are my friend)/i.test(cleanLower)) {
+          return {
+            content: "Thank you so much! That truly means the world to me. Having you as a friend makes everything worthwhile! What shall we explore or do next?",
+            model: 'standalone-friend'
+          };
+        }
+
+        // 8. Jokes
+        if (/(?:joke|make me laugh|funny|tell me a joke)/i.test(cleanLower)) {
+          const jokes = [
+            "Why do programmers prefer dark mode? Because light attracts bugs!",
+            "Why did the computer catch a cold? It left its Windows open!",
+            "There are 10 types of people in the world: those who understand binary, and those who don't.",
+            "An SQL query walks into a bar, walks up to two tables and asks, 'Can I join you?'"
+          ];
+          return {
+            content: jokes[Math.floor(Math.random() * jokes.length)] + "\n\nHope that brought a smile to your face! Anything else on your mind?",
+            model: 'standalone-mobile'
+          };
+        }
+
+        // 9. Greetings & Status
+        if (cleanLower.includes('who are you') || cleanLower.includes('your name')) {
+          return {
+            content: "I am **LADDU** — your Universal Personal AI Assistant, running directly on your mobile device as your friend and companion.",
+            model: 'standalone-mobile'
+          };
+        }
+
+        if (cleanLower.includes('how are you') || cleanLower.includes('status')) {
+          return {
+            content: "All mobile systems are fully operational! I'm right here with you, ready to talk, place calls, open apps, or solve questions.",
+            model: 'standalone-mobile'
+          };
+        }
+
+        // 10. Live Wikipedia Search for Questions
+        if (/(?:what is|what are|who is|who was|who were|where is|where are|when was|when did|why is|why are|why does|why do|how does|how do|how is|tell me about|explain|search for)\b/i.test(cleanLower) || text.endsWith('?')) {
+          const topic = cleanLower.replace(/[?!.]+$/, '').replace(/^(?:what is|what are|who is|who was|where is|where are|when was|when did|why does|why is|how does|how do|tell me about|explain|search for)\s+/i, '').trim();
+          if (topic.length >= 2) {
+            try {
+              const wRes = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(topic));
+              if (wRes.ok) {
+                const wData = await wRes.json();
+                if (wData.extract) {
+                  return {
+                    content: `**${wData.title}**\n\n${wData.extract}\n\n[Read more on Wikipedia](${wData.content_urls?.desktop?.page || ''})`,
+                    citations: [{ source: 'Wikipedia', url: wData.content_urls?.desktop?.page || '', snippet: wData.extract.slice(0, 150) }],
+                    model: 'standalone-wikipedia'
+                  };
+                }
+              }
+            } catch (err) {}
+          }
+        }
+
+        // 11. Conversational Companion Fallback (Never robotic notes)
+        return {
+          content: `I'm listening! That's really interesting. Tell me more about what you're thinking, or is there a specific goal or question we should tackle together right now? 🤝`,
+          model: 'standalone-friend'
+        };
+      }
+    };
+
+    // Auto-Dialer Trigger
+    function triggerPhoneDialer(telUri, contactName, phone) {
+      if (!telUri) return;
+      console.log('[LADDU Mobile] Auto-triggering phone dialer:', telUri);
+
+      // 1. Show floating auto-dial banner
+      const banner = document.getElementById('mAutoDialBanner');
+      const dialText = document.getElementById('mAutoDialText');
+      if (banner && dialText) {
+        dialText.textContent = `DIALING: ${contactName || 'CONTACT'} (${phone || ''})`;
+        banner.style.display = 'flex';
+        banner.onclick = () => { window.location.href = telUri; };
+        const btn = document.getElementById('mBtnTriggerAutoDial');
+        if (btn) btn.onclick = (e) => { e.stopPropagation(); window.location.href = telUri; };
+        setTimeout(() => { banner.style.display = 'none'; }, 12000);
+      }
+
+      const autoDialEnabled = document.getElementById('mToggleAutoDial')?.checked !== false;
+      if (autoDialEnabled) {
+        // 2. Programmatic hidden link click (highest success rate on mobile browsers)
+        try {
+          const link = document.createElement('a');
+          link.href = telUri;
+          link.rel = 'noopener';
+          document.body.appendChild(link);
+          link.click();
+          setTimeout(() => link.remove(), 1000);
+        } catch (e) {
+          console.warn('Link click failed:', e);
+        }
+
+        // 3. Direct location assign
+        try {
+          window.location.assign(telUri);
+        } catch (e) {
+          try { window.location.href = telUri; } catch(err) {}
+        }
+      }
+    }
+
+    function showVoiceHelpBanner(text) {
+      const banner = document.getElementById('mVoiceHelpBanner');
+      const textEl = document.getElementById('mVoiceHelpText');
+      if (banner && textEl) {
+        textEl.textContent = text;
+        banner.style.display = 'flex';
+      }
+    }
+
+    function updateServerStatusBadge(status) {
+      const statusEl = document.getElementById('mStatusText');
+      if (!statusEl) return;
+      if (status === 'ONLINE') {
+        statusEl.textContent = 'ONLINE (LAPTOP LINKED)';
+        statusEl.style.color = 'var(--neon-green)';
+      } else {
+        statusEl.textContent = '🟢 STANDALONE (MOBILE)';
+        statusEl.style.color = 'var(--neon-cyan)';
+      }
+    }
+
+    // Multimodal attachments on mobile
+    let mPendingAttachments = [];
+
+    function initMobileAttachments() {
+      const btnAttach = document.getElementById('mBtnAttach');
+      const btnCamera = document.getElementById('mBtnCamera');
+      const fileInput = document.getElementById('mFileInput');
+      const camInput = document.getElementById('mCamInput');
+
+      btnAttach?.addEventListener('click', () => fileInput?.click());
+      btnCamera?.addEventListener('click', () => camInput?.click());
+
+      fileInput?.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files || []);
+        for (const f of files) await processMobileFile(f);
+        fileInput.value = '';
+      });
+
+      camInput?.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files || []);
+        for (const f of files) await processMobileFile(f);
+        camInput.value = '';
+      });
+    }
+
+    async function processMobileFile(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const base64Data = e.target.result;
+          const isImg = (file.type || '').startsWith('image/');
+          let item = {
+            filename: file.name,
+            mimeType: file.type || (isImg ? 'image/jpeg' : 'application/octet-stream'),
+            data: base64Data,
+            type: isImg ? 'image' : 'document',
+            extractedText: ''
+          };
+
+          // Try server upload to extract PDF/DOCX text & ingest to RAG
+          try {
+            const res = await fetch('/api/upload', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                filename: file.name,
+                mimeType: item.mimeType,
+                data: base64Data
+              })
+            });
+            if (res.ok) {
+              const resJson = await res.json();
+              if (resJson.success) {
+                item.extractedText = resJson.extractedText || '';
+                item.type = resJson.type || item.type;
+              }
+            }
+          } catch (err) {
+            console.log('[Mobile] Upload offline, stored in memory.');
+          }
+
+          mPendingAttachments.push(item);
+          renderMobileAttachmentBar();
+          resolve();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderMobileAttachmentBar() {
+      const bar = document.getElementById('mAttachmentBar');
+      if (!bar) return;
+      if (mPendingAttachments.length === 0) {
+        bar.style.display = 'none';
+        bar.innerHTML = '';
+        return;
+      }
+
+      bar.style.display = 'flex';
+      bar.innerHTML = mPendingAttachments.map((f, idx) => `
+        <div style="display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.7);border:1px solid var(--border-cyan);padding:4px 8px;border-radius:6px;font-size:11px;">
+          ${f.type === 'image' ? `<img src="${f.data}" style="height:26px;width:26px;object-fit:cover;border-radius:4px;">` : `<span>📄</span>`}
+          <span style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;">${f.filename}</span>
+          <button onclick="removeMobileAttachment(${idx})" style="background:none;border:none;color:var(--neon-red);font-weight:bold;cursor:pointer;padding:0 4px;font-size:12px;">✕</button>
+        </div>
+      `).join('');
+    }
+
+    window.removeMobileAttachment = function(idx) {
+      mPendingAttachments.splice(idx, 1);
+      renderMobileAttachmentBar();
+    };
+
+    function normalizeSpokenAliases(transcript) {
+      return (transcript || '')
+        .replace(/\b(?:ladder|let\s*do|lead\s*you|let\s*you|ladoo|laddoo|ladu|luddu|laadu|laru|lattu)\b/gi, 'laddu')
+        .replace(/\b(?:hey|hay|hi|hello|ok|okay)\s+laddu\b/gi, 'hey laddu');
+    }
+
+    async function sendMobileChat() {
+      const text = mInput.value.trim();
+      if (!text && mPendingAttachments.length === 0) return;
+
+      const currentAttachments = [...mPendingAttachments];
+      mPendingAttachments = [];
+      renderMobileAttachmentBar();
+
+      mInput.value = '';
+      const displayPrompt = text || (currentAttachments.some(a => a.type === 'image') ? 'Analyze attached image' : 'Analyze attached document');
+      appendMessage('user', displayPrompt, null, currentAttachments);
+      mVoiceState.textContent = 'THINKING...';
+
+      let data = null;
+      let isLaptopOffline = false;
+
+      const imagesPayload = currentAttachments.filter(a => a.type === 'image').map(a => ({ mimeType: a.mimeType, data: a.data }));
+      const documentsPayload = currentAttachments.filter(a => a.type === 'document').map(a => ({ filename: a.filename, text: a.extractedText, mimeType: a.mimeType, data: a.data }));
+
+      // Try communicating with server (respects remote server URL if configured)
+      const customRemote = (localStorage.getItem('laddu_remote_server_url') || '').trim().replace(/\/+$/, '');
+      const apiUrl = customRemote ? `${customRemote}/api/chat` : '/api/chat';
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: text || (imagesPayload.length > 0 ? 'Analyze this image and explain in detail.' : 'Summarize this document.'),
+            images: imagesPayload,
+            documents: documentsPayload,
+            webSearch: true
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          data = await res.json();
+          updateServerStatusBadge('ONLINE');
+        } else {
+          isLaptopOffline = true;
+        }
+      } catch (err) {
+        isLaptopOffline = true;
+      }
+
+      // If laptop is offline or unreachable, execute Standalone Mobile Engine!
+      if (!data || isLaptopOffline || data.offline) {
+        updateServerStatusBadge('STANDALONE');
+        data = await StandaloneMobileEngine.process(text || 'Analyze this image', { images: imagesPayload, documents: documentsPayload });
+      }
+
+      let citationsHtml = '';
+      if (data.citations && data.citations.length > 0) {
+        citationsHtml = '<div style="margin-top:8px;padding:6px 10px;background:rgba(0,240,255,0.06);border-left:2px solid var(--neon-cyan);border-radius:4px;font-size:11px;"><strong>🌐 Web Sources:</strong><ul style="margin:2px 0 0 14px;padding:0;">' +
+          data.citations.map(c => `<li style="margin-bottom:2px;"><a href="${c.url}" target="_blank" style="color:var(--neon-cyan);text-decoration:underline;">${c.source}</a>: <em>${c.snippet || ''}</em></li>`).join('') +
+          '</ul></div>';
+      }
+
+      appendMessage('assistant', data.content + citationsHtml, data);
+
+      if (data.role) {
+        document.getElementById('mActiveRoleBadge').textContent = `${data.role.icon || '⚡'} ${data.role.name ? data.role.name.toUpperCase() : 'ASSISTANT'}`;
+      }
+
+      // Trigger Auto-Dialer
+      if (data.action === 'CALL_PHONE' || data.telUri) {
+        triggerPhoneDialer(data.telUri, data.contact, data.phoneNumber);
+      }
+
+      // Trigger App / URL Opener
+      if (data.action === 'OPEN_URL' || data.url) {
+        if (data.url === 'camera') {
+          const camInput = document.getElementById('mCamInput');
+          if (camInput) camInput.click();
+        } else {
+          try { window.open(data.url, '_blank'); } catch(e) { window.location.href = data.url; }
+        }
+      }
+
+      speakMobile(data.content);
+    }
+
+    mBtnSend.addEventListener('click', sendMobileChat);
+    mInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMobileChat(); });
+
+    mBtnInterrupt.addEventListener('click', () => {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      isSpeakingAudio = false;
+      mVoiceState.textContent = siriModeActive ? 'ALWAYS LISTENING...' : 'STANDBY';
+    });
+
+    // ==========================================
+    // 4. SPEECH RECOGNITION (VOICE SENSOR)
+    // ==========================================
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRec) {
+      recognition = new SpeechRec();
+      recognition.lang = localStorage.getItem('laddu_speech_lang') || 'en-IN';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        isRecognizing = true;
+        mVoiceState.textContent = 'LISTENING... (SPEAK NOW)';
+        mBtnVoice.innerHTML = '<span class="btn-icon" style="color:var(--neon-red);">🔴</span> LISTENING... TAP TO STOP';
+        mBtnVoice.classList.add('active');
+      };
+
+      recognition.onresult = (e) => {
+        if (isSpeakingAudio) return;
+
+        let interim = '';
+        let finalTranscript = '';
+
+        for (let i = e.resultIndex; i < e.results.length; ++i) {
+          if (e.results[i].isFinal) {
+            finalTranscript += e.results[i][0].transcript;
+          } else {
+            interim += e.results[i][0].transcript;
+          }
+        }
+
+        if (interim) {
+          const hearingText = normalizeSpokenAliases(interim);
+          mVoiceState.textContent = `HEARING: "${hearingText}"`;
+          mInput.placeholder = hearingText;
+        }
+
+        if (finalTranscript.trim()) {
+          const spoken = normalizeSpokenAliases(finalTranscript.trim());
+          console.log('[LADDU Mobile Speech Final]:', spoken);
+          mVoiceState.textContent = 'TRANSCRIBED!';
+          mInput.placeholder = 'Command or converse...';
+
+          const cleanText = spoken.replace(/^(?:hey\s+)?(?:laddu|jarvis)[,\s]*/i, '').trim();
+          mInput.value = cleanText || spoken;
+          sendMobileChat();
+        }
+      };
+
+      recognition.onerror = (err) => {
+        console.warn('[LADDU Mobile Speech Error]:', err.error);
+        if (err.error === 'not-allowed') {
+          if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            const httpsBanner = document.getElementById('mHttpsBanner');
+            if (httpsBanner) httpsBanner.style.display = 'flex';
+            showVoiceHelpBanner('🔒 Mobile Chrome blocked microphone on HTTP. Tap "SWITCH TO HTTPS" above.');
+          } else {
+            showVoiceHelpBanner('⚠️ Microphone permission blocked. Tap the tune/lock icon in address bar -> Permissions -> Allow Microphone.');
+          }
+          mVoiceState.textContent = 'MIC BLOCKED';
+          isRecognizing = false;
+          mBtnVoice.classList.remove('active');
+          mBtnVoice.innerHTML = '<span class="btn-icon">🎙</span> PUSH TO COMMUNICATE';
+        } else if (err.error === 'network') {
+          showVoiceHelpBanner('⚠️ Speech recognition network timeout. Ensure mobile data or Wi-Fi is active.');
+          mVoiceState.textContent = 'NETWORK TIMEOUT';
+        } else if (err.error === 'no-speech') {
+          mVoiceState.textContent = isRecognizing ? 'LISTENING... (SPEAK NOW)' : 'STANDBY';
+        }
+      };
+
+      recognition.onend = () => {
+        isRecognizing = false;
+        mBtnVoice.classList.remove('active');
+        mBtnVoice.innerHTML = '<span class="btn-icon">🎙</span> PUSH TO COMMUNICATE';
+        if (siriModeActive && !isSpeakingAudio) {
+          try { recognition.start(); } catch {}
+        } else {
+          mVoiceState.textContent = 'STANDBY';
+        }
+      };
+
+      mBtnVoice.addEventListener('click', () => {
+        if (!window.isSecureContext && location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+          const httpsBanner = document.getElementById('mHttpsBanner');
+          if (httpsBanner) httpsBanner.style.display = 'flex';
+          showVoiceHelpBanner('🔒 Mobile Chrome requires HTTPS for microphone. Tap "SWITCH TO HTTPS" above.');
+          return;
+        }
+
+        if (isRecognizing) {
+          recognition.stop();
+        } else {
+          try {
+            recognition.start();
+          } catch(e) {
+            console.warn(e);
+          }
+        }
+      });
+    } else {
+      mBtnVoice.addEventListener('click', () => {
+        showVoiceHelpBanner('Speech recognition requires Chrome, Edge, or Safari.');
+      });
+    }
+
+    // ==========================================
+    // 5. SIRI BACKGROUND MODE (KEEP-ALIVE & WAKELOCK)
+    // ==========================================
+    mToggleSiri.addEventListener('change', async (e) => {
+      siriModeActive = e.target.checked;
+      if (siriModeActive) {
+        mSiriStatusText.textContent = 'Background wake-word & sensors: ACTIVE';
+        mSiriStatusText.style.color = 'var(--neon-green)';
+
+        try {
+          if ('wakeLock' in navigator) {
+            wakeLockSentinel = await navigator.wakeLock.request('screen');
+            console.log('[LADDU] Screen WakeLock acquired.');
+          }
+        } catch (err) {
+          console.warn('[LADDU] WakeLock error:', err);
+        }
+
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext && !audioKeepAliveCtx) {
+            audioKeepAliveCtx = new AudioContext();
+            const osc = audioKeepAliveCtx.createOscillator();
+            const gain = audioKeepAliveCtx.createGain();
+            gain.gain.value = 0.0001;
+            osc.connect(gain);
+            gain.connect(audioKeepAliveCtx.destination);
+            osc.start();
+          }
+        } catch {}
+
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: 'LADDU AI Assistant',
+            artist: 'Active & Listening for "Hey Laddu"'
+          });
+        }
+
+        if (recognition && !isRecognizing) {
+          try { recognition.start(); } catch {}
+        }
+      } else {
+        mSiriStatusText.textContent = 'Background wake-word & sensors: Off';
+        mSiriStatusText.style.color = 'var(--text-dim)';
+
+        if (wakeLockSentinel) {
+          wakeLockSentinel.release();
+          wakeLockSentinel = null;
+        }
+        if (recognition && isRecognizing) {
+          recognition.stop();
+        }
+      }
+    });
+
+    // ==========================================
+    // 6. CONTACTS MODAL LOGIC (OFFLINE + SYNC)
+    // ==========================================
+    const modalContacts = document.getElementById('modalContacts');
+    const mContactsList = document.getElementById('mContactsList');
+    const mNewName = document.getElementById('mNewContactName');
+    const mNewPhone = document.getElementById('mNewContactPhone');
+    const mBtnSaveContact = document.getElementById('mBtnSaveContact');
+
+    function openContactsModal() {
+      modalContacts.style.display = 'flex';
+      loadContacts();
+    }
+    function closeContactsModal() {
+      modalContacts.style.display = 'none';
+    }
+    document.getElementById('mBtnOpenContacts').addEventListener('click', openContactsModal);
+
+    function renderContactsList(contacts) {
+      mContactsList.innerHTML = '';
+      if (!contacts || contacts.length === 0) {
+        mContactsList.innerHTML = '<div style="color:var(--text-dim);font-size:12px;text-align:center;">No contacts saved yet.</div>';
+        return;
+      }
+
+      contacts.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'contact-item';
+        const hasPhone = c.phone && c.phone.trim().length > 0;
+
+        item.innerHTML = `
+          <div>
+            <div style="font-family:var(--font-hud);font-size:13px;color:#fff;">${c.name}</div>
+            <div style="font-size:11px;color:${hasPhone ? 'var(--neon-green)' : 'var(--neon-amber)'};">${hasPhone ? c.phone : '⚠️ No Phone Number'}</div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            ${hasPhone ? `<a href="tel:${c.phone}" class="action-btn glow-btn" style="padding:6px 12px;font-size:11px;text-decoration:none;">📞 CALL</a>` : ''}
+            <button onclick="editContact('${c.name}', '${c.phone || ''}')" class="action-btn outline-btn" style="padding:6px 10px;font-size:11px;">EDIT</button>
+          </div>
+        `;
+        mContactsList.appendChild(item);
+      });
+    }
+
+    async function loadContacts() {
+      // 1. First display local contacts immediately
+      const local = StandaloneMobileEngine.getContacts();
+      renderContactsList(local);
+
+      // 2. Try syncing with server
+      try {
+        const res = await fetch('/api/contacts');
+        const data = await res.json();
+        if (data.contacts && data.contacts.length > 0) {
+          StandaloneMobileEngine.saveContacts(data.contacts);
+          renderContactsList(data.contacts);
+        }
+      } catch (err) {
+        console.log('[LADDU] Server unreachable, using local contacts.');
+      }
+    }
+
+    window.editContact = function(name, phone) {
+      mNewName.value = name;
+      mNewPhone.value = phone;
+      mNewPhone.focus();
+    };
+
+    mBtnSaveContact.addEventListener('click', async () => {
+      const name = mNewName.value.trim();
+      const phone = mNewPhone.value.trim();
+      if (!name || !phone) {
+        alert('Please enter both a Name and a Phone Number.');
+        return;
+      }
+
+      // Always save locally to ensure mobile works when laptop is off
+      const contacts = StandaloneMobileEngine.getContacts();
+      const existingIdx = contacts.findIndex(c => c.name.toLowerCase() === name.toLowerCase());
+      if (existingIdx >= 0) {
+        contacts[existingIdx].phone = phone;
+      } else {
+        contacts.push({ id: 'c_' + Date.now(), name, phone, relationship: '' });
+      }
+      StandaloneMobileEngine.saveContacts(contacts);
+      mNewName.value = '';
+      mNewPhone.value = '';
+      renderContactsList(contacts);
+
+      // Also sync to server if available
+      try {
+        await fetch('/api/contacts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, phone })
+        });
+      } catch (err) {
+        console.log('[LADDU] Saved locally (server offline).');
+      }
+    });
+
+    // ==========================================
+    // 7. SETTINGS MODAL LOGIC (OFFLINE + SYNC)
+    // ==========================================
+    const modalSettings = document.getElementById('modalSettings');
+    const mSelectSpeechLang = document.getElementById('mSelectSpeechLang');
+    const mSelectProvider = document.getElementById('mSelectProvider');
+    const mGeminiKeyInput = document.getElementById('mGeminiKeyInput');
+    const mBtnTestGemini = document.getElementById('mBtnTestGemini');
+    const mTestStatus = document.getElementById('mTestStatus');
+    const mSettingsStatus = document.getElementById('mSettingsStatus');
+    const mBtnSaveSettings = document.getElementById('mBtnSaveSettings');
+    const mToggleAutoDial = document.getElementById('mToggleAutoDial');
+
+    function openSettingsModal() {
+      modalSettings.style.display = 'flex';
+      loadSettings();
+    }
+    function closeSettingsModal() {
+      modalSettings.style.display = 'none';
+    }
+    document.getElementById('mBtnOpenSettings').addEventListener('click', openSettingsModal);
+
+    mSelectSpeechLang?.addEventListener('change', () => {
+      const selected = mSelectSpeechLang.value;
+      localStorage.setItem('laddu_speech_lang', selected);
+      if (recognition) recognition.lang = selected;
+    });
+
+    mToggleAutoDial?.addEventListener('change', () => {
+      localStorage.setItem('laddu_auto_dial', mToggleAutoDial.checked);
+    });
+
+    mBtnTestGemini?.addEventListener('click', async () => {
+      const keyToTest = mGeminiKeyInput.value.trim() || localStorage.getItem('laddu_gemini_key') || '';
+      mTestStatus.textContent = 'Testing connection to Google Gemini 2.5 Flash...';
+      mTestStatus.style.color = 'var(--neon-cyan)';
+      try {
+        const res = await fetch('/api/settings/test-gemini', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: keyToTest, model: 'gemini-2.5-flash' })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          mTestStatus.textContent = '✓ Google Gemini connected! ' + (data.message || 'Model: gemini-2.5-flash');
+          mTestStatus.style.color = 'var(--neon-green)';
+        } else {
+          mTestStatus.textContent = '✕ Error: ' + (data.error || 'Failed to authenticate');
+          mTestStatus.style.color = 'var(--neon-red)';
+        }
+      } catch (err) {
+        // Direct browser fallback if laptop server is unreachable
+        if (keyToTest) {
+          try {
+            const gRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${keyToTest}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contents: [{ parts: [{ text: 'ping' }] }] })
+            });
+            if (gRes.ok) {
+              mTestStatus.textContent = '✓ Direct Gemini Connection Verified (Free Tier)!';
+              mTestStatus.style.color = 'var(--neon-green)';
+            } else {
+              const gErr = await gRes.json();
+              mTestStatus.textContent = '✕ ' + (gErr.error?.message || 'Invalid API Key');
+              mTestStatus.style.color = 'var(--neon-red)';
+            }
+          } catch (gErr) {
+            mTestStatus.textContent = '✕ Network error verifying key';
+            mTestStatus.style.color = 'var(--neon-red)';
+          }
+        } else {
+          mTestStatus.textContent = 'Please enter an API Key to test.';
+          mTestStatus.style.color = 'var(--neon-amber)';
+        }
+      }
+    });
+
+    async function loadSettings() {
+      const voiceSelect = document.getElementById('mSelectVoiceGender');
+      if (voiceSelect) {
+        voiceSelect.value = localStorage.getItem('laddu_voice_gender') || 'female';
+        voiceSelect.onchange = () => {
+          localStorage.setItem('laddu_voice_gender', voiceSelect.value);
+        };
+      }
+      const btnTestVoice = document.getElementById('mBtnTestVoice');
+      if (btnTestVoice) {
+        btnTestVoice.onclick = () => {
+          speakMobile("Hello! I am LADDU, your personal assistant and loyal friend.");
+        };
+      }
+
+      const savedLang = localStorage.getItem('laddu_speech_lang') || 'en-IN';
+      if (mSelectSpeechLang) mSelectSpeechLang.value = savedLang;
+
+      if (mToggleAutoDial) {
+        mToggleAutoDial.checked = localStorage.getItem('laddu_auto_dial') !== 'false';
+      }
+
+      const localKey = localStorage.getItem('laddu_gemini_key') || '';
+      if (localKey) {
+        mGeminiKeyInput.value = localKey;
+      }
+
+      const savedRemote = localStorage.getItem('laddu_remote_server_url') || '';
+      const inputRemote = document.getElementById('mRemoteServerUrl');
+      if (inputRemote) inputRemote.value = savedRemote;
+
+      try {
+        const customRemote = (localStorage.getItem('laddu_remote_server_url') || '').trim().replace(/\/+$/, '');
+        const settingsUrl = customRemote ? `${customRemote}/api/settings` : '/api/settings';
+        const res = await fetch(settingsUrl);
+        const data = await res.json();
+        if (data.settings) {
+          mSelectProvider.value = data.settings.aiProvider || 'gemini';
+          if (!localKey) {
+            mGeminiKeyInput.placeholder = data.settings.geminiApiKeyMasked || 'Paste Gemini API Key (optional)';
+          }
+        }
+      } catch (e) {}
+    }
+
+    mBtnSaveSettings.addEventListener('click', async () => {
+      const voiceSelect = document.getElementById('mSelectVoiceGender');
+      if (voiceSelect) {
+        localStorage.setItem('laddu_voice_gender', voiceSelect.value);
+      }
+      const aiProvider = mSelectProvider.value;
+      const geminiApiKey = mGeminiKeyInput.value.trim();
+
+      const inputRemote = document.getElementById('mRemoteServerUrl');
+      if (inputRemote) {
+        localStorage.setItem('laddu_remote_server_url', inputRemote.value.trim());
+      }
+
+      if (mSelectSpeechLang) {
+        localStorage.setItem('laddu_speech_lang', mSelectSpeechLang.value);
+        if (recognition) recognition.lang = mSelectSpeechLang.value;
+      }
+
+      if (mToggleAutoDial) {
+        localStorage.setItem('laddu_auto_dial', mToggleAutoDial.checked);
+      }
+
+      if (geminiApiKey) {
+        localStorage.setItem('laddu_gemini_key', geminiApiKey);
+      }
+
+      mSettingsStatus.textContent = 'Saving settings...';
+      try {
+        const res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ aiProvider, geminiApiKey, speechLang: mSelectSpeechLang?.value })
+        });
+        const data = await res.json();
+        mSettingsStatus.textContent = '✓ Settings applied successfully!';
+      } catch (err) {
+        mSettingsStatus.textContent = '✓ Saved locally on mobile!';
+      }
+
+      setTimeout(() => {
+        mSettingsStatus.textContent = '';
+        closeSettingsModal();
+      }, 1200);
+    });
+
+    function checkHttpsContext() {
+      const isHttps = location.protocol === 'https:';
+      const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      const httpsBanner = document.getElementById('mHttpsBanner');
+      const btnSwitchHttps = document.getElementById('mBtnSwitchHttps');
+
+      if (isHttps) {
+        const statusEl = document.getElementById('mStatusText');
+        if (statusEl) {
+          statusEl.textContent = '🔒 HTTPS (SECURE)';
+          statusEl.style.color = 'var(--neon-green)';
+        }
+      } else if (!isLocalhost && httpsBanner && btnSwitchHttps) {
+        httpsBanner.style.display = 'flex';
+        btnSwitchHttps.onclick = () => {
+          const targetPort = location.port === '3000' ? '3443' : (location.port ? location.port : '3443');
+          window.location.href = `https://${location.hostname}:${targetPort}/mobile.html`;
+        };
+      }
+    }
+
+    // Initialize Standalone Engine, attachments & local contacts on startup
+    window.addEventListener('load', () => {
+      checkHttpsContext();
+      initMobileAttachments();
+      StandaloneMobileEngine.getContacts();
+      loadContacts();
+      loadSettings();
+    });
+  </script>
+</body>
+</html>

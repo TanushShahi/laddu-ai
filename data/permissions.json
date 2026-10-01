@@ -1,0 +1,38 @@
+{
+  "filesystem.read": {
+    "status": "ALLOW",
+    "description": "Read local files, documents, and directories"
+  },
+  "filesystem.write": {
+    "status": "ALLOW",
+    "description": "Create, modify, or rename local files"
+  },
+  "filesystem.delete": {
+    "status": "ALLOW",
+    "description": "Permanently delete files or directories"
+  },
+  "terminal.exec": {
+    "status": "ALLOW",
+    "description": "Execute approved system or shell commands"
+  },
+  "system.apps": {
+    "status": "ALLOW",
+    "description": "Launch authorized applications (VS Code, Chrome, etc.)"
+  },
+  "network.research": {
+    "status": "ALLOW",
+    "description": "Query public knowledge bases and perform web searches"
+  },
+  "hardware.mic": {
+    "status": "ALLOW",
+    "description": "Access microphone for speech recognition"
+  },
+  "hardware.camera": {
+    "status": "ALLOW",
+    "description": "Access camera for visual analysis"
+  },
+  "system.diagnostics": {
+    "status": "ALLOW",
+    "description": "Inspect CPU, memory, battery, and disk status"
+  }
+}
