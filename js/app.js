@@ -30,6 +30,26 @@ function initClock() {
 // ==========================================
 
 // Native WhatsApp Protocol Launcher with Auto Web Fallback (Desktop)
+
+function removeSpeechStutter(text) {
+  if (!text) return '';
+  let str = text.trim();
+  // 1. Collapse immediate repeated words: "call call" -> "call", "open open" -> "open"
+  str = str.replace(/\b([a-zA-Z0-9]+)(?:\s+\1\b)+/gi, '$1');
+  // 2. Collapse repeated 2-word phrases: "call papa call papa" -> "call papa"
+  str = str.replace(/\b([a-zA-Z0-9]+\s+[a-zA-Z0-9]+)(?:\s+\1\b)+/gi, '$1');
+  // 3. Collapse repeated 3-word phrases: "open the app open the app" -> "open the app"
+  str = str.replace(/\b([a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+)(?:\s+\1\b)+/gi, '$1');
+  // 4. Remove duplicate bookend word: "open instagram open" -> "open instagram"
+  const words = str.split(/\s+/);
+  if (words.length >= 3 && words[0].toLowerCase() === words[words.length - 1].toLowerCase()) {
+    words.pop();
+    str = words.join(' ');
+  }
+  return str.trim();
+}
+window.removeSpeechStutter = removeSpeechStutter;
+
 function openWhatsAppWithFallback(phone = '', text = '') {
   const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
   let appUrl = 'whatsapp://';
@@ -409,13 +429,13 @@ function initSpeechRecognition() {
 
   const defaultPlaceholder = 'Command LADDU, ask anything, or drag & drop files...';
 
-  let deskSpeechAccumulator = '';
+  let deskSessionTranscript = '';
   let deskSpeechDebounceTimer = null;
 
   async function dispatchDeskAccumulatedSpeech() {
-    if (!deskSpeechAccumulator.trim()) return;
-    const rawSpoken = deskSpeechAccumulator.trim();
-    deskSpeechAccumulator = '';
+    if (!deskSessionTranscript.trim()) return;
+    const rawSpoken = removeSpeechStutter(deskSessionTranscript.trim());
+    deskSessionTranscript = '';
 
     let cleanedFinal = rawSpoken.replace(/\b(?:ladder|latter|latte|let\s*do|lead\s*you|let\s*you|ladoo|laddoo|ladu|luddu|laadu|laru|lattu|lallu|lalu|labbu|radu|raddu|radoo)\b/gi, 'laddu');
     cleanedFinal = cleanedFinal.replace(/\b(?:hey|hay|hi|hello|ok|okay|sun|suno|are|arre|oye|oi|ae)\s+laddu\b/gi, 'hey laddu');
@@ -428,6 +448,11 @@ function initSpeechRecognition() {
     if (chatInput) chatInput.placeholder = defaultPlaceholder;
     console.log('[LADDU Desktop Voice Final Dispatched]:', cleanedFinal);
 
+    // Stop recognition session temporarily so next sentence starts clean
+    if (recognition && isListening) {
+      try { recognition.stop(); } catch {}
+    }
+
     // Check for single incomplete keywords
     const cleanCommand = cleanedFinal.replace(/^(?:hey\s+)?(?:laddu|jarvis)[,\s]*/i, '').trim();
     if (cleanCommand.toLowerCase() === 'call' || cleanCommand.toLowerCase() === 'dial') {
@@ -438,6 +463,26 @@ function initSpeechRecognition() {
     if (cleanCommand.toLowerCase() === 'open' || cleanCommand.toLowerCase() === 'launch') {
       appendChatMessage('assistant', 'Which application or website would you like me to open?');
       speakBrowser({ text: 'Which application or website would you like me to open?' });
+      return;
+    }
+
+    // Check client interceptors (Image, Tools, WhatsApp)
+    const lowerCmd = cleanCommand.toLowerCase();
+    const imgM = lowerCmd.match(/^(?:generate|create|draw|make|paint)\s+(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of\s+)?(.+)$/i) || lowerCmd.match(/^(?:draw|paint)\s+(.+)$/i);
+    if (imgM) {
+      const cleanP = imgM[1].replace(/^(?:me\s+)?(?:an?\s+)?/i, '').trim();
+      const imageUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(cleanP) + '?width=1024&height=1024&nologo=true&enhance=true';
+      const imgRes = {
+        content: 'Here is the AI image generated for **"' + cleanP + '"**:',
+        action: 'AI_IMAGE_GENERATED',
+        imageUrl,
+        imagePrompt: cleanP,
+        role: { id: 'assistant', name: 'Creative Studio (LADDU)', icon: '🎨' },
+        model: 'pollinations-genai'
+      };
+      appendChatMessage('user', cleanedFinal);
+      appendChatMessage('assistant', imgRes.content, [], imgRes.role, imgRes);
+      speakBrowser({ text: 'Here is the AI image generated for ' + cleanP });
       return;
     }
 
@@ -483,35 +528,34 @@ function initSpeechRecognition() {
   recognition.onresult = (event) => {
     if (isSpeakingAudio) return;
 
-    let interimTranscript = '';
-    let newFinal = '';
+    let finalPart = '';
+    let interimPart = '';
 
-    for (let i = event.resultIndex; i < event.results.length; i++) {
+    for (let i = 0; i < event.results.length; i++) {
       const item = event.results[i];
+      const chunk = item[0].transcript.trim();
       if (item.isFinal) {
-        newFinal += item[0].transcript + ' ';
+        finalPart += (finalPart ? ' ' : '') + chunk;
       } else {
-        interimTranscript += item[0].transcript;
+        interimPart += (interimPart ? ' ' : '') + chunk;
       }
     }
 
-    if (newFinal.trim()) {
-      deskSpeechAccumulator = (deskSpeechAccumulator + ' ' + newFinal).trim();
-    }
+    deskSessionTranscript = finalPart || interimPart;
 
     const chatInput = document.getElementById('chatInput');
     const coreStateText = document.getElementById('coreStateText');
 
-    const displayTranscript = (deskSpeechAccumulator + ' ' + interimTranscript).trim();
+    const displayTranscript = removeSpeechStutter(deskSessionTranscript);
     if (displayTranscript) {
       let hearingText = displayTranscript.replace(/\b(?:ladder|let do|lead you|ladoo|laddoo|ladu|luddu|ludo)\b/gi, 'laddu');
       if (coreStateText) coreStateText.textContent = 'HEARING: "' + hearingText + '"';
       if (chatInput) chatInput.placeholder = '🎙️ Hearing: "' + hearingText + '"...';
     }
 
-    // Debounce: Wait 650ms of silence so "call papa" or "open instagram" are never truncated
+    // Debounce: Wait 650ms of silence so complete commands execute reliably
     if (deskSpeechDebounceTimer) clearTimeout(deskSpeechDebounceTimer);
-    if (deskSpeechAccumulator.trim()) {
+    if (deskSessionTranscript.trim()) {
       deskSpeechDebounceTimer = setTimeout(() => {
         dispatchDeskAccumulatedSpeech();
       }, 650);
@@ -854,6 +898,105 @@ async function sendChat() {
 
     const customRemote = (localStorage.getItem('laddu_remote_server_url') || '').trim().replace(/\/+$/, '');
     const apiUrl = customRemote ? `${customRemote}/api/chat` : '/api/chat';
+
+        // Instant Client Interceptors (Image Gen, Multi-AI Tools, WhatsApp)
+    const cleanLower = text.toLowerCase().trim();
+
+    const imgMatch = cleanLower.match(/^(?:generate|create|draw|make|paint)\s+(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of\s+)?(.+)$/i) || cleanLower.match(/^(?:draw|paint)\s+(.+)$/i);
+    if (imgMatch) {
+      const rawPrompt = imgMatch[1].trim();
+      const cleanPrompt = rawPrompt.replace(/^(?:me\s+)?(?:an?\s+)?/i, '').trim();
+      const imageUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(cleanPrompt) + '?width=1024&height=1024&nologo=true&enhance=true';
+      const imgData = {
+        content: 'Here is the AI image generated for **"' + cleanPrompt + '"**:',
+        action: 'AI_IMAGE_GENERATED',
+        imageUrl,
+        imagePrompt: cleanPrompt,
+        role: { id: 'assistant', name: 'Creative Studio (LADDU)', icon: '🎨' },
+        model: 'pollinations-genai'
+      };
+      appendChatMessage('assistant', imgData.content, [], imgData.role, imgData);
+      speakBrowser({ text: 'Here is the AI image generated for ' + cleanPrompt });
+      setAIActivityState('IDLE');
+      return;
+    }
+
+    const perplexityMatch = cleanLower.match(/^(?:use\s+perplexity\s+(?:to\s+)?(?:research|search)?|deep\s+research|research\s+deeply\s+on|research)\s+(.+)$/i);
+    if (perplexityMatch) {
+      const topic = perplexityMatch[1].trim();
+      const perplexityUrl = 'https://www.perplexity.ai/search?q=' + encodeURIComponent(topic);
+      const pData = {
+        content: 'I have compiled a deep research dispatch for **"' + topic + '"**. Explore synthesized intelligence with web citations:',
+        action: 'LAUNCH_AI_TOOL',
+        toolName: 'Perplexity AI',
+        toolIcon: '🔍',
+        toolDesc: 'Deep AI Research & Multi-Source Synthesis',
+        toolUrl: perplexityUrl,
+        topic,
+        role: { id: 'mentor', name: 'Research Intelligence (Perplexity)', icon: '🔍' },
+        model: 'perplexity-router'
+      };
+      appendChatMessage('assistant', pData.content, [], pData.role, pData);
+      speakBrowser({ text: 'I have opened Perplexity AI research for ' + topic });
+      setAIActivityState('IDLE');
+      return;
+    }
+
+    const gammaMatch = cleanLower.match(/^(?:use\s+gamma\s+(?:to\s+)?(?:make|generate|create)?|generate\s+ppt|make\s+ppt|create\s+ppt|generate\s+presentation|make\s+presentation|create\s+presentation|create\s+slides)\s+(?:on|about)?\s*(.+)$/i);
+    if (gammaMatch) {
+      const topic = gammaMatch[1].trim();
+      const gammaUrl = 'https://gamma.app';
+      const gData = {
+        content: '### 📊 Slide Deck Blueprint: ' + topic.toUpperCase() + '\n\n* **Slide 1: Title & Vision**\n* **Slide 2: Core Challenges**\n* **Slide 3: Strategic Innovation**\n* **Slide 4: Roadmap**\n* **Slide 5: Summary**\n\n*Convert this into an AI presentation directly on Gamma App below:*',
+        action: 'LAUNCH_AI_TOOL',
+        toolName: 'Gamma App',
+        toolIcon: '📊',
+        toolDesc: 'AI Presentation & Slide Deck Generator',
+        toolUrl: gammaUrl,
+        topic,
+        role: { id: 'assistant', name: 'Presentation Architect (Gamma)', icon: '📊' },
+        model: 'gamma-router'
+      };
+      appendChatMessage('assistant', gData.content, [], gData.role, gData);
+      speakBrowser({ text: 'Here is your presentation outline. You can launch Gamma App to create the slides.' });
+      setAIActivityState('IDLE');
+      return;
+    }
+
+    const devMatch = cleanLower.match(/^(?:use\s+(?:antigravity|v0|claude)\s+(?:to\s+)?(?:build|make|code)?|build\s+app|make\s+app|code\s+app|develop\s+app|create\s+website)\s+(?:for|about)?\s*(.+)$/i);
+    if (devMatch) {
+      const topic = devMatch[1].trim();
+      const devUrl = 'https://v0.dev';
+      const dData = {
+        content: '### 🚀 Software Architecture: ' + topic.toUpperCase() + '\n\n* **Frontend**: Responsive PWA HUD\n* **Backend**: Node.js & WebSockets\n* **Intelligence**: Multimodal LLM\n* **Deployment**: 24/7 Cloud Autonomy\n\n*Build and deploy this app in Antigravity or v0 below:*',
+        action: 'LAUNCH_AI_TOOL',
+        toolName: 'Antigravity / v0',
+        toolIcon: '🚀',
+        toolDesc: 'Autonomous App Builder',
+        toolUrl: devUrl,
+        topic,
+        role: { id: 'mentor', name: 'Engineering Architect (Antigravity)', icon: '🚀' },
+        model: 'antigravity-router'
+      };
+      appendChatMessage('assistant', dData.content, [], dData.role, dData);
+      speakBrowser({ text: 'Here is the architecture blueprint. You can launch Antigravity or v0 to build the application.' });
+      setAIActivityState('IDLE');
+      return;
+    }
+
+    if (cleanLower === 'open whatsapp' || cleanLower === 'launch whatsapp') {
+      openWhatsAppWithFallback();
+      const waData = {
+        content: 'Opening WhatsApp application now...',
+        action: 'OPEN_WHATSAPP',
+        role: { id: 'assistant', name: 'Executive Assistant (JARVIS)', icon: '🤖' },
+        model: 'standalone-launcher'
+      };
+      appendChatMessage('assistant', waData.content, [], waData.role, waData);
+      speakBrowser({ text: 'Opening WhatsApp application now.' });
+      setAIActivityState('IDLE');
+      return;
+    }
 
     let data = null;
     try {
@@ -2289,36 +2432,52 @@ function initDesktopContactsAndSettings() {
     });
   }
 
-  async function loadDesktopContacts() {
+    async function loadDesktopContacts() {
     if (!contactsList) return;
     contactsList.innerHTML = '<div style="color:var(--text-dim);font-size:12px;text-align:center;">Loading contacts...</div>';
+    let contacts = [];
     try {
       const res = await fetch('/api/contacts');
-      const data = await res.json();
-      contactsList.innerHTML = '';
-      if (!data.contacts || data.contacts.length === 0) {
-        contactsList.innerHTML = '<div style="color:var(--text-dim);font-size:12px;text-align:center;">No contacts saved yet.</div>';
-        return;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.contacts && Array.isArray(data.contacts)) contacts = data.contacts;
       }
-      data.contacts.forEach(c => {
-        const item = document.createElement('div');
-        item.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(0,240,255,0.15);border-radius:6px;margin-bottom:6px;';
-        const hasPhone = c.phone && c.phone.trim().length > 0;
-        item.innerHTML = `
-          <div>
-            <div style="font-family:var(--font-hud);font-size:13px;color:#fff;">${c.name}</div>
-            <div style="font-size:11px;color:${hasPhone ? 'var(--neon-green)' : 'var(--neon-amber)'};">${hasPhone ? c.phone : '⚠️ No Phone Number'}</div>
-          </div>
-          <div style="display:flex;gap:6px;">
-            ${hasPhone ? `<a href="tel:${c.phone}" class="action-btn glow-btn" style="padding:4px 10px;font-size:11px;text-decoration:none;">📞 CALL</a>` : ''}
-            <button onclick="editDesktopContact('${c.name}', '${c.phone || ''}')" class="action-btn outline-btn" style="padding:4px 8px;font-size:11px;">EDIT</button>
-          </div>
-        `;
-        contactsList.appendChild(item);
-      });
-    } catch (err) {
-      contactsList.innerHTML = `<div style="color:var(--neon-red);font-size:12px;">Error: ${err.message}</div>`;
+    } catch (err) {}
+
+    // Fallback to localStorage (for GitHub Pages / standalone offline)
+    if (contacts.length === 0) {
+      try {
+        const local = localStorage.getItem('laddu_contacts');
+        if (local) contacts = JSON.parse(local);
+      } catch {}
     }
+
+    if (contacts.length === 0) {
+      contacts = [
+        { id: 'c_papa', name: 'Papa', relationship: 'father', phone: '+919876543210', notes: 'Father' },
+        { id: 'c_mom', name: 'Mom', relationship: 'mother', phone: '+919876543211', notes: 'Mother' },
+        { id: 'c_emergency', name: 'Emergency', relationship: 'emergency', phone: '112', notes: 'Emergency Services' }
+      ];
+      try { localStorage.setItem('laddu_contacts', JSON.stringify(contacts)); } catch {}
+    }
+
+    contactsList.innerHTML = '';
+    contacts.forEach(c => {
+      const item = document.createElement('div');
+      item.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(0,240,255,0.15);border-radius:6px;margin-bottom:6px;';
+      const hasPhone = c.phone && c.phone.trim().length > 0;
+      item.innerHTML = `
+        <div>
+          <div style="font-family:var(--font-hud);font-size:13px;color:#fff;">${c.name}</div>
+          <div style="font-size:11px;color:${hasPhone ? 'var(--neon-green)' : 'var(--neon-amber)'};">${hasPhone ? c.phone : '⚠️ No Phone Number'}</div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          ${hasPhone ? `<a href="tel:${c.phone}" class="action-btn glow-btn" style="padding:4px 10px;font-size:11px;text-decoration:none;">📞 CALL</a>` : ''}
+          <button onclick="editDesktopContact('${c.name}', '${c.phone || ''}')" class="action-btn outline-btn" style="padding:4px 8px;font-size:11px;">EDIT</button>
+        </div>
+      `;
+      contactsList.appendChild(item);
+    });
   }
 
   window.editDesktopContact = function(name, phone) {
@@ -2475,6 +2634,7 @@ function initDesktopContactsAndSettings() {
       const data = await res.json();
       if (data.settings) {
         selectProvider.value = data.settings.aiProvider || 'gemini';
+        const localKey = localStorage.getItem('laddu_gemini_key') || '';
         if (data.settings.geminiApiKeyMasked && !localKey) {
           geminiInput.placeholder = data.settings.geminiApiKeyMasked;
         }

@@ -153,6 +153,90 @@ export class IntentDispatcher {
       };
     }
 
+    
+    // 1.5 AI Image Generation Intent (Instant & 100% Free)
+    const imgMatch = cleanLower.match(/^(?:generate|create|draw|make|paint)\s+(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of\s+)?(.+)$/i) || cleanLower.match(/^(?:draw|paint)\s+(.+)$/i);
+    if (imgMatch) {
+      const rawPrompt = imgMatch[1].trim();
+      const cleanPrompt = rawPrompt.replace(/^(?:me\s+)?(?:an?\s+)?/i, '').trim();
+      const imageUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(cleanPrompt) + '?width=1024&height=1024&nologo=true&enhance=true';
+      return {
+        content: 'Here is the AI image generated for **"' + cleanPrompt + '"**:',
+        action: 'AI_IMAGE_GENERATED',
+        imageUrl,
+        imagePrompt: cleanPrompt,
+        role: { id: 'assistant', name: 'Creative Studio (LADDU)', icon: '🎨' },
+        model: 'pollinations-genai'
+      };
+    }
+
+    // 1.6 Multi-AI Tool Router: Perplexity (Research)
+    const perplexityMatch = cleanLower.match(/^(?:use\s+perplexity\s+(?:to\s+)?(?:research|search)?|deep\s+research|research\s+deeply\s+on|research)\s+(.+)$/i);
+    if (perplexityMatch) {
+      const topic = perplexityMatch[1].trim();
+      const perplexityUrl = 'https://www.perplexity.ai/search?q=' + encodeURIComponent(topic);
+      return {
+        content: 'I have compiled a deep research dispatch for **"' + topic + '"**. You can explore synthesized multi-source intelligence with real-time web citations:',
+        action: 'LAUNCH_AI_TOOL',
+        toolName: 'Perplexity AI',
+        toolIcon: '🔍',
+        toolDesc: 'Deep AI Research & Multi-Source Synthesis',
+        toolUrl: perplexityUrl,
+        topic,
+        role: { id: 'mentor', name: 'Research Intelligence (Perplexity)', icon: '🔍' },
+        model: 'perplexity-router'
+      };
+    }
+
+    // 1.7 Multi-AI Tool Router: Gamma (Presentations / PPTs)
+    const gammaMatch = cleanLower.match(/^(?:use\s+gamma\s+(?:to\s+)?(?:make|generate|create)?|generate\s+ppt|make\s+ppt|create\s+ppt|generate\s+presentation|make\s+presentation|create\s+presentation|create\s+slides)\s+(?:on|about)?\s*(.+)$/i);
+    if (gammaMatch) {
+      const topic = gammaMatch[1].trim();
+      const gammaUrl = 'https://gamma.app';
+      const outline = '### 📊 Slide Deck Blueprint: ' + topic.toUpperCase() + '\n\n' +
+        '* **Slide 1: Title & Executive Vision** — Overview of ' + topic + '\n' +
+        '* **Slide 2: Core Problem & Challenges** — Market pain points\n' +
+        '* **Slide 3: Strategic Innovation** — Key features & advantages\n' +
+        '* **Slide 4: Implementation Roadmap** — Phased deployment milestones\n' +
+        '* **Slide 5: Conclusion & Expected Impact** — Strategic summary\n\n' +
+        '*You can convert this outline into an AI presentation directly on Gamma App below:*';
+      return {
+        content: outline,
+        action: 'LAUNCH_AI_TOOL',
+        toolName: 'Gamma App',
+        toolIcon: '📊',
+        toolDesc: 'AI Presentation & Slide Deck Generator',
+        toolUrl: gammaUrl,
+        topic,
+        role: { id: 'assistant', name: 'Presentation Architect (Gamma)', icon: '📊' },
+        model: 'gamma-router'
+      };
+    }
+
+    // 1.8 Multi-AI Tool Router: Antigravity / v0 (App Development)
+    const devMatch = cleanLower.match(/^(?:use\s+(?:antigravity|v0|claude)\s+(?:to\s+)?(?:build|make|code)?|build\s+app|make\s+app|code\s+app|develop\s+app|create\s+website)\s+(?:for|about)?\s*(.+)$/i);
+    if (devMatch) {
+      const topic = devMatch[1].trim();
+      const devUrl = 'https://v0.dev';
+      const blueprint = '### 🚀 Software Architecture: ' + topic.toUpperCase() + '\n\n' +
+        '* **Frontend**: Modern Responsive PWA / Next.js with Sci-Fi HUD components\n' +
+        '* **Backend**: High-performance Node.js / REST & WebSockets\n' +
+        '* **AI Intelligence Layer**: Multimodal LLM + Grounded Vector Search\n' +
+        '* **Deployment**: 24/7 Cloud Autonomy with zero downtime\n\n' +
+        '*You can scaffold and run this code directly in Antigravity or v0 below:*';
+      return {
+        content: blueprint,
+        action: 'LAUNCH_AI_TOOL',
+        toolName: 'Antigravity / v0',
+        toolIcon: '🚀',
+        toolDesc: 'Autonomous App & Frontend Builder',
+        toolUrl: devUrl,
+        topic,
+        role: { id: 'mentor', name: 'Engineering Architect (Antigravity)', icon: '🚀' },
+        model: 'antigravity-router'
+      };
+    }
+
     // 2. Save Contact Intent: "save papa's number as 9876543210", "add contact mom 98765..."
     const saveContactMatch = cleanLower.match(/^(?:save|add|set)\s+(?:contact\s+)?([a-zA-Z\s]+?)(?:'s)?\s+(?:number|phone)?\s*(?:as|is|to|=|:)?\s*([0-9+\s\-]+)$/i);
     if (saveContactMatch) {
@@ -255,6 +339,22 @@ export class IntentDispatcher {
     if (/^https?:\/\//i.test(target)) {
       this._spawnDetached(target);
       return { content: `Opening website: ${target}`, action: 'OPEN_URL', url: target, app: target, model: 'app-launcher' };
+    }
+
+    // 1.5 WhatsApp Application (Native Protocol)
+    if (t === 'whatsapp' || t === 'whats app') {
+      if (isWin) {
+        this._spawnCmd('start whatsapp:');
+      }
+      return {
+        content: 'Opening WhatsApp application now...',
+        action: 'OPEN_WHATSAPP',
+        appUrl: 'whatsapp://',
+        webUrl: 'https://web.whatsapp.com',
+        url: 'whatsapp://',
+        app: 'WhatsApp',
+        model: 'app-launcher'
+      };
     }
 
     // 2. Comprehensive Web Services Directory

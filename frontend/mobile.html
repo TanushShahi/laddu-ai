@@ -362,8 +362,72 @@
         <div style="display:flex;gap:6px;margin-top:8px;">
           <button class="action-btn glow-btn" id="mBtnTestGemini" style="padding:6px 12px;font-size:11px;width:100%;">⚡ TEST KEYS POOL</button>
         </div>
-        <div id="mTestStatus" style="font-size:11px;min-height:16px;margin-top:6px;"></div>
+                <div id="mTestStatus" style="font-size:11px;min-height:16px;margin-top:6px;"></div>
       </div>
+
+      <div style="margin-top:12px;">
+        <button class="action-btn glow-btn" id="mBtnSaveSettings" style="width:100%;padding:10px;font-size:13px;font-weight:700;">💾 SAVE SETTINGS</button>
+      </div>
+      <div id="mSettingsStatus" style="font-size:11px;text-align:center;min-height:16px;margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <!-- AI Tools Hub Modal (Mobile) -->
+  <div class="hud-modal" id="modalAITools" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);backdrop-filter:blur(10px);z-index:200;align-items:center;justify-content:center;padding:16px;">
+    <div class="glass-panel" style="width:100%;max-width:380px;padding:18px;border:1px solid var(--border-cyan);border-radius:10px;max-height:85vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-family:var(--font-hud);font-size:14px;color:var(--neon-cyan);margin:0;">⚡ MULTI-AI SUPER TOOLS</h3>
+        <button onclick="closeAIToolsModal()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">✕</button>
+      </div>
+      <p style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">
+        Tap any tool or command LADDU naturally (e.g. <em>"use perplexity to research..."</em>):
+      </p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <!-- Perplexity -->
+        <div style="background:rgba(0,240,255,0.08);border:1px solid var(--border-cyan);border-radius:8px;padding:10px;">
+          <div style="font-size:12px;color:#fff;font-weight:700;margin-bottom:2px;">🔍 Perplexity</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:8px;">Deep AI Research</div>
+          <button onclick="openToolPrompt('Perplexity', 'https://www.perplexity.ai/search?q=')" class="action-btn glow-btn" style="width:100%;padding:5px;font-size:10px;">RESEARCH ↗</button>
+        </div>
+
+        <!-- Gamma -->
+        <div style="background:rgba(187,0,255,0.08);border:1px solid rgba(187,0,255,0.3);border-radius:8px;padding:10px;">
+          <div style="font-size:12px;color:#fff;font-weight:700;margin-bottom:2px;">📊 Gamma</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:8px;">AI Presentations</div>
+          <a href="https://gamma.app" target="_blank" class="action-btn glow-btn" style="text-decoration:none;display:block;text-align:center;box-sizing:border-box;padding:5px;font-size:10px;background:#bb00ff;color:#fff;border:none;">CREATE PPT ↗</a>
+        </div>
+
+        <!-- Antigravity / v0 -->
+        <div style="background:rgba(0,255,170,0.08);border:1px solid rgba(0,255,170,0.3);border-radius:8px;padding:10px;">
+          <div style="font-size:12px;color:#fff;font-weight:700;margin-bottom:2px;">🚀 Antigravity / v0</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:8px;">App Coding</div>
+          <a href="https://v0.dev" target="_blank" class="action-btn glow-btn" style="text-decoration:none;display:block;text-align:center;box-sizing:border-box;padding:5px;font-size:10px;background:var(--neon-green);color:#000;border:none;">BUILD APP ↗</a>
+        </div>
+
+        <!-- Image Studio -->
+        <div style="background:rgba(255,170,0,0.08);border:1px solid rgba(255,170,0,0.3);border-radius:8px;padding:10px;">
+          <div style="font-size:12px;color:#fff;font-weight:700;margin-bottom:2px;">🎨 Image Studio</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:8px;">Free AI Art Generator</div>
+          <button onclick="promptGenerateImage()" class="action-btn glow-btn" style="width:100%;padding:5px;font-size:10px;background:var(--neon-amber);color:#000;border:none;">DRAW ART ↗</button>
+        </div>
+
+        <!-- ChatGPT -->
+        <div style="background:rgba(0,119,255,0.08);border:1px solid rgba(0,119,255,0.3);border-radius:8px;padding:10px;">
+          <div style="font-size:12px;color:#fff;font-weight:700;margin-bottom:2px;">💬 ChatGPT</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:8px;">Writing & Ideas</div>
+          <a href="https://chatgpt.com" target="_blank" class="action-btn outline-btn" style="text-decoration:none;display:block;text-align:center;box-sizing:border-box;padding:5px;font-size:10px;">OPEN ↗</a>
+        </div>
+
+        <!-- Canva -->
+        <div style="background:rgba(0,240,255,0.08);border:1px solid var(--border-cyan);border-radius:8px;padding:10px;">
+          <div style="font-size:12px;color:#fff;font-weight:700;margin-bottom:2px;">✨ Canva AI</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:8px;">Posters & Graphics</div>
+          <a href="https://www.canva.com" target="_blank" class="action-btn outline-btn" style="text-decoration:none;display:block;text-align:center;box-sizing:border-box;padding:5px;font-size:10px;">DESIGN ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     // ==========================================
@@ -465,8 +529,49 @@
       const el = document.createElement('div');
       el.className = `message ${role}`;
       let actionCardHtml = '';
+      
       if (actionMeta) {
-        if (actionMeta.action === 'CALL_PHONE' || actionMeta.telUri) {
+        if (actionMeta.action === 'AI_IMAGE_GENERATED' || actionMeta.imageUrl) {
+          actionCardHtml = `
+            <div style="margin-top:10px;padding:12px;background:rgba(0,0,0,0.6);border:1px solid var(--neon-cyan);border-radius:10px;box-shadow:0 0 20px rgba(0,240,255,0.25);">
+              <div style="font-family:var(--font-hud);font-size:11px;color:var(--neon-cyan);margin-bottom:8px;">🎨 LADDU AI IMAGE STUDIO</div>
+              <div style="position:relative;border-radius:8px;overflow:hidden;margin-bottom:8px;background:#000;">
+                <img src="${actionMeta.imageUrl}" alt="${actionMeta.imagePrompt || ''}" style="width:100%;max-height:360px;object-fit:cover;display:block;border-radius:8px;" onclick="window.open('${actionMeta.imageUrl}', '_blank')">
+              </div>
+              <div style="font-size:12px;color:#fff;font-style:italic;margin-bottom:10px;">"${actionMeta.imagePrompt || ''}"</div>
+              <div style="display:flex;gap:8px;">
+                <a href="${actionMeta.imageUrl}" target="_blank" download="laddu-image.jpg" class="action-btn glow-btn" style="text-decoration:none;padding:6px 14px;font-size:11px;">📥 DOWNLOAD</a>
+                <button onclick="window.open('${actionMeta.imageUrl}', '_blank')" class="action-btn outline-btn" style="padding:6px 14px;font-size:11px;">🔍 FULLSCREEN</button>
+              </div>
+            </div>
+          `;
+        } else if (actionMeta.action === 'LAUNCH_AI_TOOL' || actionMeta.toolUrl) {
+          actionCardHtml = `
+            <div style="margin-top:10px;padding:12px;background:linear-gradient(135deg, rgba(0,240,255,0.08), rgba(187,0,255,0.08));border:1px solid var(--neon-cyan);border-radius:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:20px;">${actionMeta.toolIcon || '⚡'}</span>
+                  <div>
+                    <div style="font-family:var(--font-hud);font-size:12px;color:#fff;font-weight:700;">${actionMeta.toolName}</div>
+                    <div style="font-size:10px;color:var(--text-dim);">${actionMeta.toolDesc || ''}</div>
+                  </div>
+                </div>
+                <a href="${actionMeta.toolUrl}" target="_blank" class="action-btn glow-btn" style="text-decoration:none;padding:6px 12px;font-size:11px;white-space:nowrap;">LAUNCH ↗</a>
+              </div>
+            </div>
+          `;
+        } else if (actionMeta.action === 'OPEN_WHATSAPP') {
+          actionCardHtml = `
+            <div style="margin-top:10px;padding:12px;background:rgba(37,211,102,0.1);border:1px solid #25D366;border-radius:8px;">
+              <div style="font-family:var(--font-hud);font-size:11px;color:#25D366;margin-bottom:6px;">💬 WHATSAPP DISPATCH</div>
+              <div style="font-size:12px;color:#fff;margin-bottom:8px;">Dispatched to WhatsApp application. If not installed, launch Web:</div>
+              <div style="display:flex;gap:8px;">
+                <button onclick="openWhatsAppWithFallback()" class="action-btn" style="background:#25D366;color:#000;border:none;padding:6px 14px;font-size:11px;font-weight:700;">📱 OPEN APP</button>
+                <a href="https://web.whatsapp.com" target="_blank" class="action-btn outline-btn" style="text-decoration:none;padding:6px 14px;font-size:11px;">🌐 WEB</a>
+              </div>
+            </div>
+          `;
+        } else if (actionMeta.action === 'CALL_PHONE' || actionMeta.telUri) {
           const contactLabel = actionMeta.contact ? `${actionMeta.contact} &bull; ` : '';
           const phoneNum = actionMeta.phoneNumber || '';
           actionCardHtml = `
@@ -1121,6 +1226,25 @@
       renderMobileAttachmentBar();
     };
 
+    
+    function removeSpeechStutter(text) {
+      if (!text) return '';
+      let str = text.trim();
+      // 1. Collapse immediate repeated words: "call call" -> "call", "open open" -> "open"
+      str = str.replace(/\b([a-zA-Z0-9]+)(?:\s+\1\b)+/gi, '$1');
+      // 2. Collapse repeated 2-word phrases: "call papa call papa" -> "call papa"
+      str = str.replace(/\b([a-zA-Z0-9]+\s+[a-zA-Z0-9]+)(?:\s+\1\b)+/gi, '$1');
+      // 3. Collapse repeated 3-word phrases: "open the app open the app" -> "open the app"
+      str = str.replace(/\b([a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+)(?:\s+\1\b)+/gi, '$1');
+      // 4. Remove duplicate bookend word: "open instagram open" -> "open instagram"
+      const words = str.split(/\s+/);
+      if (words.length >= 3 && words[0].toLowerCase() === words[words.length - 1].toLowerCase()) {
+        words.pop();
+        str = words.join(' ');
+      }
+      return str.trim();
+    }
+  
     function normalizeSpokenAliases(transcript) {
       if (!transcript) return '';
       let s = transcript;
@@ -1142,6 +1266,100 @@
       const displayPrompt = text || (currentAttachments.some(a => a.type === 'image') ? 'Analyze attached image' : 'Analyze attached document');
       appendMessage('user', displayPrompt, null, currentAttachments);
       mVoiceState.textContent = 'THINKING...';
+
+            // 1. Instant Client Interceptors (Image Gen, Multi-AI Tools, WhatsApp)
+      const cleanLower = text.toLowerCase().trim();
+
+      const imgMatch = cleanLower.match(/^(?:generate|create|draw|make|paint)\s+(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of\s+)?(.+)$/i) || cleanLower.match(/^(?:draw|paint)\s+(.+)$/i);
+      if (imgMatch) {
+        const rawPrompt = imgMatch[1].trim();
+        const cleanPrompt = rawPrompt.replace(/^(?:me\s+)?(?:an?\s+)?/i, '').trim();
+        const imageUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(cleanPrompt) + '?width=1024&height=1024&nologo=true&enhance=true';
+        const imgResult = {
+          content: 'Here is the AI image generated for **"' + cleanPrompt + '"**:',
+          action: 'AI_IMAGE_GENERATED',
+          imageUrl,
+          imagePrompt: cleanPrompt,
+          role: { id: 'assistant', name: 'Creative Studio (LADDU)', icon: '🎨' },
+          model: 'pollinations-genai'
+        };
+        appendMessage('assistant', imgResult.content, imgResult);
+        speakMobile('Here is the AI image generated for ' + cleanPrompt);
+        return;
+      }
+
+      const perplexityMatch = cleanLower.match(/^(?:use\s+perplexity\s+(?:to\s+)?(?:research|search)?|deep\s+research|research\s+deeply\s+on|research)\s+(.+)$/i);
+      if (perplexityMatch) {
+        const topic = perplexityMatch[1].trim();
+        const perplexityUrl = 'https://www.perplexity.ai/search?q=' + encodeURIComponent(topic);
+        const pResult = {
+          content: 'I have compiled a deep research dispatch for **"' + topic + '"**. Explore synthesized intelligence with web citations:',
+          action: 'LAUNCH_AI_TOOL',
+          toolName: 'Perplexity AI',
+          toolIcon: '🔍',
+          toolDesc: 'Deep AI Research & Multi-Source Synthesis',
+          toolUrl: perplexityUrl,
+          topic,
+          role: { id: 'mentor', name: 'Research Intelligence (Perplexity)', icon: '🔍' },
+          model: 'perplexity-router'
+        };
+        appendMessage('assistant', pResult.content, pResult);
+        speakMobile('I have opened Perplexity AI research for ' + topic);
+        return;
+      }
+
+      const gammaMatch = cleanLower.match(/^(?:use\s+gamma\s+(?:to\s+)?(?:make|generate|create)?|generate\s+ppt|make\s+ppt|create\s+ppt|generate\s+presentation|make\s+presentation|create\s+presentation|create\s+slides)\s+(?:on|about)?\s*(.+)$/i);
+      if (gammaMatch) {
+        const topic = gammaMatch[1].trim();
+        const gammaUrl = 'https://gamma.app';
+        const gResult = {
+          content: '### 📊 Slide Deck Blueprint: ' + topic.toUpperCase() + '\n\n* **Slide 1: Title & Vision**\n* **Slide 2: Core Challenges**\n* **Slide 3: Strategic Innovation**\n* **Slide 4: Roadmap**\n* **Slide 5: Summary**\n\n*Convert this into an AI presentation directly on Gamma App below:*',
+          action: 'LAUNCH_AI_TOOL',
+          toolName: 'Gamma App',
+          toolIcon: '📊',
+          toolDesc: 'AI Presentation & Slide Deck Generator',
+          toolUrl: gammaUrl,
+          topic,
+          role: { id: 'assistant', name: 'Presentation Architect (Gamma)', icon: '📊' },
+          model: 'gamma-router'
+        };
+        appendMessage('assistant', gResult.content, gResult);
+        speakMobile('Here is your presentation outline. You can launch Gamma App to create the slides.');
+        return;
+      }
+
+      const devMatch = cleanLower.match(/^(?:use\s+(?:antigravity|v0|claude)\s+(?:to\s+)?(?:build|make|code)?|build\s+app|make\s+app|code\s+app|develop\s+app|create\s+website)\s+(?:for|about)?\s*(.+)$/i);
+      if (devMatch) {
+        const topic = devMatch[1].trim();
+        const devUrl = 'https://v0.dev';
+        const dResult = {
+          content: '### 🚀 Software Architecture: ' + topic.toUpperCase() + '\n\n* **Frontend**: Responsive PWA HUD\n* **Backend**: Node.js & WebSockets\n* **Intelligence**: Multimodal LLM\n* **Deployment**: 24/7 Cloud Autonomy\n\n*Build and deploy this app in Antigravity or v0 below:*',
+          action: 'LAUNCH_AI_TOOL',
+          toolName: 'Antigravity / v0',
+          toolIcon: '🚀',
+          toolDesc: 'Autonomous App Builder',
+          toolUrl: devUrl,
+          topic,
+          role: { id: 'mentor', name: 'Engineering Architect (Antigravity)', icon: '🚀' },
+          model: 'antigravity-router'
+        };
+        appendMessage('assistant', dResult.content, dResult);
+        speakMobile('Here is the architecture blueprint. You can launch Antigravity or v0 to build the application.');
+        return;
+      }
+
+      if (cleanLower === 'open whatsapp' || cleanLower === 'launch whatsapp') {
+        openWhatsAppWithFallback();
+        const waResult = {
+          content: 'Opening WhatsApp application now...',
+          action: 'OPEN_WHATSAPP',
+          role: { id: 'assistant', name: 'JARVIS', icon: '🤖' },
+          model: 'app-launcher'
+        };
+        appendMessage('assistant', waResult.content, waResult);
+        speakMobile('Opening WhatsApp application now.');
+        return;
+      }
 
       let data = null;
       let isLaptopOffline = false;
@@ -1243,15 +1461,15 @@
         mBtnVoice.classList.add('active');
       };
 
-      let speechAccumulator = '';
+      let sessionTranscript = '';
       let speechDebounceTimer = null;
 
       function dispatchAccumulatedSpeech() {
-        if (!speechAccumulator.trim()) return;
-        const rawSpoken = speechAccumulator.trim();
-        speechAccumulator = '';
+        if (!sessionTranscript.trim()) return;
+        const rawSpoken = removeSpeechStutter(sessionTranscript.trim());
+        sessionTranscript = '';
         const spoken = normalizeSpokenAliases(rawSpoken);
-        console.log('[LADDU Mobile Speech Dispatched Complete Sentence]:', spoken);
+        console.log('[LADDU Mobile Clean Spoken Sentence]:', spoken);
 
         if (/\b(?:hey\s+laddu|laddu|jarvis)\b/i.test(spoken)) {
           playWakeChime();
@@ -1259,6 +1477,11 @@
 
         mVoiceState.textContent = 'TRANSCRIBED!';
         mInput.placeholder = 'Command or converse...';
+
+        // Temporarily stop recognition session so subsequent speech starts clean
+        if (recognition && isRecognizing) {
+          try { recognition.stop(); } catch {}
+        }
 
         const cleanText = spoken.replace(/^(?:hey\s+)?(?:laddu|jarvis)[,\s]*/i, '').trim();
 
@@ -1281,33 +1504,57 @@
       recognition.onresult = (e) => {
         if (isSpeakingAudio) return;
 
-        let interim = '';
-        let newFinal = '';
+        let finalPart = '';
+        let interimPart = '';
 
-        for (let i = e.resultIndex; i < e.results.length; ++i) {
+        // Reconstruct from e.results cumulative array (do NOT accumulate blindly into external string)
+        for (let i = 0; i < e.results.length; ++i) {
+          const chunk = e.results[i][0].transcript.trim();
           if (e.results[i].isFinal) {
-            newFinal += e.results[i][0].transcript + ' ';
+            finalPart += (finalPart ? ' ' : '') + chunk;
           } else {
-            interim += e.results[i][0].transcript;
+            interimPart += (interimPart ? ' ' : '') + chunk;
           }
         }
 
-        if (newFinal.trim()) {
-          speechAccumulator = (speechAccumulator + ' ' + newFinal).trim();
-        }
+        sessionTranscript = finalPart || interimPart;
 
-        const displayText = normalizeSpokenAliases((speechAccumulator + ' ' + interim).trim());
+        const displayText = normalizeSpokenAliases(removeSpeechStutter(sessionTranscript));
         if (displayText) {
           mVoiceState.textContent = 'HEARING: "' + displayText + '"';
           mInput.placeholder = displayText;
         }
 
-        // Wait 650ms after user pauses speaking so complete sentences like "call papa" or "open instagram" are never truncated
+        // Wait 650ms after user pauses speaking before dispatching
         if (speechDebounceTimer) clearTimeout(speechDebounceTimer);
-        if (speechAccumulator.trim()) {
+        if (sessionTranscript.trim()) {
           speechDebounceTimer = setTimeout(() => {
             dispatchAccumulatedSpeech();
           }, 650);
+        }
+      };
+
+      recognition.onend = () => {
+        isRecognizing = false;
+        mBtnVoice.classList.remove('active');
+        mBtnVoice.innerHTML = '<span class="btn-icon">🎙</span> PUSH TO COMMUNICATE';
+        if (speechDebounceTimer) {
+          clearTimeout(speechDebounceTimer);
+          speechDebounceTimer = null;
+        }
+        if (sessionTranscript && sessionTranscript.trim()) {
+          dispatchAccumulatedSpeech();
+        }
+        if (siriModeActive && !isSpeakingAudio) {
+          setTimeout(() => {
+            if (siriModeActive && !isSpeakingAudio && recognition && !isRecognizing) {
+              try { recognition.start(); } catch(e){}
+            }
+          }, 200);
+        } else {
+          mVoiceState.textContent = 'STANDBY';
+          const heroLogo = document.getElementById('mHeroLogo');
+          if (heroLogo) heroLogo.className = 'laddu-hero-logo';
         }
       };
 
@@ -1473,6 +1720,32 @@
     const mNewPhone = document.getElementById('mNewContactPhone');
     const mBtnSaveContact = document.getElementById('mBtnSaveContact');
 
+    
+    window.openContactsModal = function() {
+      const m = document.getElementById('modalContacts');
+      if (m) { m.style.display = 'flex'; loadContacts(); }
+    };
+    window.closeContactsModal = function() {
+      const m = document.getElementById('modalContacts');
+      if (m) m.style.display = 'none';
+    };
+    window.openSettingsModal = function() {
+      const m = document.getElementById('modalSettings');
+      if (m) { m.style.display = 'flex'; loadSettings(); }
+    };
+    window.closeSettingsModal = function() {
+      const m = document.getElementById('modalSettings');
+      if (m) m.style.display = 'none';
+    };
+    window.openAIToolsModal = function() {
+      const m = document.getElementById('modalAITools');
+      if (m) m.style.display = 'flex';
+    };
+    window.closeAIToolsModal = function() {
+      const m = document.getElementById('modalAITools');
+      if (m) m.style.display = 'none';
+    };
+  
     function openContactsModal() {
       modalContacts.style.display = 'flex';
       loadContacts();
@@ -1587,7 +1860,8 @@
     }
     document.getElementById('mBtnOpenSettings').addEventListener('click', openSettingsModal);
 
-    document.getElementById('mBtnOpenAITools')?.addEventListener('click', () => {
+    document.getElementById('mBtnOpenAITools')?.addEventListener('click', openAIToolsModal);
+    document.getElementById('mBtnOpenAITools_unused')?.addEventListener('click', () => {
       document.getElementById('modalAITools').style.display = 'flex';
     });
 

@@ -114,6 +114,7 @@
       </button>
 
       <!-- Contacts Button -->
+      <button class="device-sync-btn" id="deskBtnOpenAITools" title="Multi-AI Tools Hub" style="border-color:var(--neon-cyan);color:var(--neon-cyan);">⚡ AI TOOLS</button>
       <button class="device-sync-btn" id="btnOpenDesktopContacts" title="Contacts & Speed Dial" style="border-color:var(--neon-green);color:var(--neon-green);">
         📞 CONTACTS
       </button>
@@ -723,5 +724,12 @@
 
   <script src="./js/qrcode.js"></script>
   <script src="./js/app.js"></script>
+
+  <script>
+    document.getElementById('deskBtnOpenAITools')?.addEventListener('click', () => {
+      const modal = document.getElementById('modalDesktopAITools');
+      if (modal) modal.style.display = 'flex';
+    });
+  </script>
 </body>
 </html>
