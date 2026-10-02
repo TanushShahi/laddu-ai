@@ -3,7 +3,7 @@
  * Handles caching for offline availability and fast loading across mobile, tablet, and desktop.
  * Uses Network-First strategy for HTML navigation requests so updates on GitHub Pages take effect IMMEDIATELY.
  */
-const CACHE_NAME = 'laddu-cache-v11';
+const CACHE_NAME = 'laddu-cache-v12';
 const PRECACHE_ASSETS = [
   './',
   './mobile.html',

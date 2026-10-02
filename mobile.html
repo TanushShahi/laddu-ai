@@ -782,16 +782,33 @@
               </div>
             </div>
           `;
-        } else if (actionMeta.action === 'OPEN_URL' || actionMeta.url) {
-          const appName = actionMeta.app || 'Web Resource';
+        } else if (actionMeta.action === 'OPEN_URL' || actionMeta.action === 'OPEN_APP' || actionMeta.url) {
+          const appName = actionMeta.app || 'Application';
+          const icon = actionMeta.icon || '📱';
+          const appUri = actionMeta.appUrl || actionMeta.appUri || actionMeta.intentUri || '';
+          const webUrl = actionMeta.webUrl || actionMeta.url || '';
+          const isAndroid = /Android/i.test(navigator.userAgent);
+          const launchTarget = (isAndroid && actionMeta.intentUri) ? actionMeta.intentUri : (appUri || webUrl);
+
           actionCardHtml = `
-            <div class="url-action-card" style="margin-top:10px;padding:10px 12px;background:rgba(0,255,136,0.08);border:1px solid var(--neon-green);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
-              <div style="font-size:12px;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:65%;">
-                🌐 <strong>${appName}</strong>
+            <div class="url-action-card" style="margin-top:10px;padding:12px 14px;background:rgba(0,255,136,0.08);border:1px solid var(--neon-green);border-radius:10px;">
+              <div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span>${icon}</span>
+                  <strong>${escapeHtml(appName)}</strong>
+                </div>
+                <span style="font-size:10px;color:var(--neon-green);background:rgba(0,255,136,0.15);padding:2px 6px;border-radius:4px;border:1px solid rgba(0,255,136,0.3);">APP LAUNCHER</span>
               </div>
-              <a href="${actionMeta.url}" target="_blank" class="action-btn glow-btn" style="text-decoration:none;padding:8px 16px;font-size:12px;white-space:nowrap;">
-                OPEN ↗
-              </a>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                ${launchTarget ? `
+                <a href="${launchTarget}" class="action-btn glow-btn" style="text-decoration:none;padding:8px 14px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px;">
+                  📱 OPEN APP
+                </a>` : ''}
+                ${webUrl && webUrl !== launchTarget ? `
+                <a href="${webUrl}" target="_blank" class="action-btn outline-btn" style="text-decoration:none;padding:8px 14px;font-size:12px;display:inline-flex;align-items:center;gap:5px;">
+                  🌐 OPEN WEBSITE
+                </a>` : ''}
+              </div>
             </div>
           `;
         }
@@ -990,6 +1007,175 @@
     }
     window.openWhatsAppWithFallback = openWhatsAppWithFallback;
 
+    // Comprehensive Native Application Registry for Mobile & Desktop
+    const APP_REGISTRY = {
+      'instagram': { name: 'Instagram', icon: '📸', package: 'com.instagram.android', scheme: 'instagram://app', web: 'https://www.instagram.com' },
+      'insta': { name: 'Instagram', icon: '📸', package: 'com.instagram.android', scheme: 'instagram://app', web: 'https://www.instagram.com' },
+      'youtube': { name: 'YouTube', icon: '▶️', package: 'com.google.android.youtube', scheme: 'vnd.youtube://', web: 'https://www.youtube.com' },
+      'yt': { name: 'YouTube', icon: '▶️', package: 'com.google.android.youtube', scheme: 'vnd.youtube://', web: 'https://www.youtube.com' },
+      'whatsapp': { name: 'WhatsApp', icon: '💬', package: 'com.whatsapp', scheme: 'whatsapp://', web: 'https://web.whatsapp.com' },
+      'facebook': { name: 'Facebook', icon: '👥', package: 'com.facebook.katana', scheme: 'fb://', web: 'https://www.facebook.com' },
+      'fb': { name: 'Facebook', icon: '👥', package: 'com.facebook.katana', scheme: 'fb://', web: 'https://www.facebook.com' },
+      'spotify': { name: 'Spotify', icon: '🎵', package: 'com.spotify.music', scheme: 'spotify://', web: 'https://open.spotify.com' },
+      'twitter': { name: 'Twitter (X)', icon: '🐦', package: 'com.twitter.android', scheme: 'twitter://', web: 'https://x.com' },
+      'x': { name: 'X', icon: '✖️', package: 'com.twitter.android', scheme: 'twitter://', web: 'https://x.com' },
+      'snapchat': { name: 'Snapchat', icon: '👻', package: 'com.snapchat.android', scheme: 'snapchat://', web: 'https://www.snapchat.com' },
+      'telegram': { name: 'Telegram', icon: '✈️', package: 'org.telegram.messenger', scheme: 'tg://', web: 'https://web.telegram.org' },
+      'gmail': { name: 'Gmail', icon: '✉️', package: 'com.google.android.gm', scheme: 'googlegmail://', web: 'https://mail.google.com' },
+      'mail': { name: 'Gmail', icon: '✉️', package: 'com.google.android.gm', scheme: 'mailto:', web: 'https://mail.google.com' },
+      'email': { name: 'Email', icon: '✉️', package: 'com.google.android.gm', scheme: 'mailto:', web: 'https://mail.google.com' },
+      'maps': { name: 'Google Maps', icon: '🗺️', package: 'com.google.android.apps.maps', scheme: 'maps://', web: 'https://maps.google.com' },
+      'google maps': { name: 'Google Maps', icon: '🗺️', package: 'com.google.android.apps.maps', scheme: 'maps://', web: 'https://maps.google.com' },
+      'google': { name: 'Google', icon: '🔍', package: 'com.google.android.googlequicksearchbox', scheme: 'googlechrome://', web: 'https://www.google.com' },
+      'chrome': { name: 'Google Chrome', icon: '🌐', package: 'com.android.chrome', scheme: 'googlechrome://', web: 'https://www.google.com' },
+      'browser': { name: 'Browser', icon: '🌐', package: 'com.android.chrome', scheme: 'https://www.google.com', web: 'https://www.google.com' },
+      'chatgpt': { name: 'ChatGPT', icon: '🧠', package: 'com.openai.chatgpt', scheme: 'chatgpt://', web: 'https://chatgpt.com' },
+      'linkedin': { name: 'LinkedIn', icon: '💼', package: 'com.linkedin.android', scheme: 'linkedin://', web: 'https://www.linkedin.com' },
+      'pinterest': { name: 'Pinterest', icon: '📌', package: 'com.pinterest', scheme: 'pinterest://', web: 'https://www.pinterest.com' },
+      'reddit': { name: 'Reddit', icon: '🤖', package: 'com.reddit.frontpage', scheme: 'reddit://', web: 'https://www.reddit.com' },
+      'netflix': { name: 'Netflix', icon: '🎬', package: 'com.netflix.mediaclient', scheme: 'nflx://', web: 'https://www.netflix.com' },
+      'amazon': { name: 'Amazon', icon: '📦', package: 'com.amazon.mShop.android.shopping', scheme: 'amazon://', web: 'https://www.amazon.com' },
+      'flipkart': { name: 'Flipkart', icon: '🛍️', package: 'com.flipkart.android', scheme: 'flipkart://', web: 'https://www.flipkart.com' },
+      'calculator': { name: 'Calculator', icon: '🔢', package: 'com.google.android.calculator', scheme: 'calculator://', web: 'https://www.google.com/search?q=calculator' },
+      'calc': { name: 'Calculator', icon: '🔢', package: 'com.google.android.calculator', scheme: 'calculator://', web: 'https://www.google.com/search?q=calculator' },
+      'clock': { name: 'Clock', icon: '⏰', package: 'com.google.android.deskclock', scheme: 'clock://', web: 'https://time.is' },
+      'alarm': { name: 'Alarm', icon: '⏰', package: 'com.google.android.deskclock', scheme: 'clock://', web: 'https://time.is' },
+      'calendar': { name: 'Calendar', icon: '📅', package: 'com.google.android.calendar', scheme: 'calshow://', web: 'https://calendar.google.com' },
+      'camera': { name: 'Camera', icon: '📷', isCamera: true, package: 'com.google.android.GoogleCamera', scheme: 'camera:', web: '' },
+      'photos': { name: 'Photos', icon: '🖼️', package: 'com.google.android.apps.photos', scheme: 'photos-redirect://', web: 'https://photos.google.com' },
+      'gallery': { name: 'Gallery', icon: '🖼️', package: 'com.google.android.apps.photos', scheme: 'photos-redirect://', web: 'https://photos.google.com' },
+      'settings': { name: 'Settings', icon: '⚙️', package: 'com.android.settings', scheme: 'app-settings:', web: '' },
+      'playstore': { name: 'Google Play Store', icon: '▶️', package: 'com.android.vending', scheme: 'market://', web: 'https://play.google.com' },
+      'play store': { name: 'Google Play Store', icon: '▶️', package: 'com.android.vending', scheme: 'market://', web: 'https://play.google.com' },
+      'store': { name: 'Google Play Store', icon: '▶️', package: 'com.android.vending', scheme: 'market://', web: 'https://play.google.com' },
+      'contacts': { name: 'Contacts', icon: '📇', package: 'com.google.android.contacts', scheme: 'contacts://', web: 'https://contacts.google.com' },
+      'drive': { name: 'Google Drive', icon: '💾', package: 'com.google.android.apps.docs', scheme: 'googledrive://', web: 'https://drive.google.com' },
+      'docs': { name: 'Google Docs', icon: '📄', package: 'com.google.android.apps.docs.editors.docs', scheme: 'googledocs://', web: 'https://docs.google.com' },
+      'sheets': { name: 'Google Sheets', icon: '📊', package: 'com.google.android.apps.docs.editors.sheets', scheme: 'googlesheets://', web: 'https://sheets.google.com' },
+      'paytm': { name: 'Paytm', icon: '💳', package: 'net.one97.paytm', scheme: 'paytm://', web: 'https://paytm.com' },
+      'gpay': { name: 'Google Pay', icon: '💳', package: 'com.google.android.apps.nbu.paisa.user', scheme: 'gpay://', web: 'https://pay.google.com' },
+      'google pay': { name: 'Google Pay', icon: '💳', package: 'com.google.android.apps.nbu.paisa.user', scheme: 'gpay://', web: 'https://pay.google.com' },
+      'phonepe': { name: 'PhonePe', icon: '💳', package: 'com.phonepe.app', scheme: 'phonepe://', web: 'https://www.phonepe.com' },
+      'uber': { name: 'Uber', icon: '🚗', package: 'com.ubercab', scheme: 'uber://', web: 'https://m.uber.com' },
+      'ola': { name: 'Ola Cabs', icon: '🚖', package: 'com.olacabs.customer', scheme: 'ola://', web: 'https://www.olacabs.com' },
+      'zomato': { name: 'Zomato', icon: '🍔', package: 'com.application.zomato', scheme: 'zomato://', web: 'https://www.zomato.com' },
+      'swiggy': { name: 'Swiggy', icon: '🍲', package: 'in.swiggy.android', scheme: 'swiggy://', web: 'https://www.swiggy.com' },
+      'vlc': { name: 'VLC Media Player', icon: '🎬', package: 'org.videolan.vlc', scheme: 'vlc://', web: 'https://www.videolan.org' },
+      'discord': { name: 'Discord', icon: '💬', package: 'com.discord', scheme: 'discord://', web: 'https://discord.com/app' }
+    };
+
+    function getAppLaunchInfo(target) {
+      const clean = (target || '').toLowerCase().trim()
+        .replace(/^(?:the|my)s+/i, '')
+        .replace(/\s+(?:app|application|website|page|kholo|chalao|start|open|please|now)$/i, '')
+        .trim();
+
+      const firstWord = clean.split(/\s+/)[0];
+      const lastWord = clean.split(/\s+/).pop();
+      const app = APP_REGISTRY[clean] || APP_REGISTRY[firstWord] || APP_REGISTRY[lastWord] || null;
+
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      const displayName = app ? app.name : (clean.charAt(0).toUpperCase() + clean.slice(1));
+      const icon = app ? app.icon : '📱';
+      const webUrl = app ? app.web : ('https://www.' + clean.replace(/[^a-z0-9]/g, '') + '.com');
+
+      let appUri = '';
+      let intentUri = '';
+
+      if (app && app.isCamera) {
+        return { appName: displayName, icon, isCamera: true, webUrl: '', appUri: 'camera', intentUri: '' };
+      }
+
+      if (isAndroid) {
+        if (app && app.package) {
+          intentUri = 'intent:#Intent;package=' + app.package + ';action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=' + encodeURIComponent(webUrl) + ';end';
+          appUri = intentUri;
+        } else {
+          intentUri = webUrl;
+          appUri = webUrl;
+        }
+      } else if (isIOS) {
+        appUri = (app && app.scheme) ? app.scheme : webUrl;
+      } else {
+        appUri = (app && app.scheme && !app.scheme.startsWith('http')) ? app.scheme : webUrl;
+      }
+
+      return {
+        appName: displayName,
+        icon,
+        appUri,
+        intentUri,
+        webUrl,
+        pkg: app ? app.package : null,
+        scheme: app ? app.scheme : null
+      };
+    }
+
+    function openAppWithFallback(target) {
+      const info = getAppLaunchInfo(target);
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      console.log('[LADDU AppLauncher] Launching application:', info.appName, info);
+
+      if (info.isCamera) {
+        const camInput = document.getElementById('mCamInput') || document.getElementById('cameraInput');
+        if (camInput) camInput.click();
+        return info;
+      }
+
+      if (isAndroid) {
+        if (info.intentUri) {
+          try {
+            window.location.href = info.intentUri;
+          } catch (e) {
+            const a = document.createElement('a');
+            a.href = info.intentUri;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => a.remove(), 1000);
+          }
+        } else {
+          window.open(info.webUrl, '_blank');
+        }
+      } else if (isIOS) {
+        if (info.scheme && info.scheme !== info.webUrl) {
+          const start = Date.now();
+          window.location.href = info.scheme;
+          setTimeout(() => {
+            if (!document.hidden && (Date.now() - start) < 2500) {
+              window.location.href = info.webUrl;
+            }
+          }, 1200);
+        } else {
+          window.location.href = info.webUrl;
+        }
+      } else {
+        if (info.scheme && !info.scheme.startsWith('http')) {
+          const a = document.createElement('a');
+          a.href = info.scheme;
+          document.body.appendChild(a);
+          try { a.click(); } catch(e) {}
+          setTimeout(() => {
+            a.remove();
+            if (!document.hidden) {
+              window.open(info.webUrl, '_blank');
+            }
+          }, 1000);
+        } else {
+          window.open(info.webUrl, '_blank');
+        }
+      }
+
+      return info;
+    }
+    window.openAppWithFallback = openAppWithFallback;
+    window.getAppLaunchInfo = getAppLaunchInfo;
+    window.APP_REGISTRY = APP_REGISTRY;
+
+
     // ==========================================
     // 3b. STANDALONE MOBILE ENGINE (OFFLINE WHEN LAPTOP IS OFF)
     // ==========================================
@@ -1131,38 +1317,25 @@
           };
         }
 
-        // 2. Open App / Web Service Intent
-        const openMatch = cleanLower.match(/^(?:open|launch|start|go\s+to|navigate\s+to|visit)\s+(.+)$/i);
+        // 2. Open App / Web Service Intent (Native app with web fallback)
+        const openMatch = cleanLower.match(/^(?:open|launch|start|go\s+to|navigate\s+to|visit)\s+(.+)$/i) ||
+                          cleanLower.match(/^(.+?)\s+(?:kholo|chalao|start\s*karo|open\s*karo)$/i);
         if (openMatch) {
-          const target = openMatch[1].trim().toLowerCase();
-          const webMap = {
-            'instagram': 'https://www.instagram.com',
-            'insta': 'https://www.instagram.com',
-            'facebook': 'https://www.facebook.com',
-            'fb': 'https://www.facebook.com',
-            'youtube': 'https://www.youtube.com',
-            'yt': 'https://www.youtube.com',
-            'whatsapp': 'whatsapp://',
-            'gmail': 'https://mail.google.com',
-            'mail': 'https://mail.google.com',
-            'google': 'https://www.google.com',
-            'maps': 'https://maps.google.com',
-            'spotify': 'https://open.spotify.com',
-            'twitter': 'https://x.com',
-            'x': 'https://x.com',
-            'chatgpt': 'https://chatgpt.com',
-            'netflix': 'https://www.netflix.com',
-            'amazon': 'https://www.amazon.com',
-            'flipkart': 'https://www.flipkart.com',
-            'camera': 'camera'
-          };
-
-          const url = webMap[target] || `https://www.${target.replace(/[^a-z0-9]/g, '')}.com`;
+          const target = openMatch[1].trim();
+          const cleanTarget = removeSpeechStutter(target)
+            .replace(/\b(?:app|application|website|page|please|now)\b/gi, '')
+            .trim()
+            .toLowerCase();
+          const appInfo = getAppLaunchInfo(cleanTarget);
           return {
-            content: `Opening ${openMatch[1]} now.`,
+            content: `Opening ${appInfo.appName} application now (or website if not installed)...`,
             action: 'OPEN_URL',
-            url,
-            app: openMatch[1],
+            url: appInfo.webUrl,
+            appUrl: appInfo.appUri,
+            intentUri: appInfo.intentUri,
+            webUrl: appInfo.webUrl,
+            app: appInfo.appName,
+            icon: appInfo.icon,
             model: 'standalone-launcher'
           };
         }
@@ -1783,8 +1956,9 @@
         }
       }
 
-      // G. Open App / Web Service Intent (Instant client execution)
-      const openMatch = cleanLower.match(/\b(?:open|launch|start|go\s+to|navigate\s+to|visit)\s+(.+)$/i);
+      // G. Open App / Web Service Intent (Instant client execution - Native app with web fallback)
+      const openMatch = cleanLower.match(/\b(?:open|launch|start|go\s+to|navigate\s+to|visit)\s+(.+)$/i) ||
+                        cleanLower.match(/^(.+?)\s+(?:kholo|chalao|start\s*karo|open\s*karo)$/i);
       if (openMatch && !isWaCmd) {
         const rawTarget = openMatch[1].trim();
         const cleanTarget = removeSpeechStutter(rawTarget)
@@ -1792,56 +1966,20 @@
           .trim()
           .toLowerCase();
 
-        const webMap = {
-          'instagram': 'https://www.instagram.com',
-          'insta': 'https://www.instagram.com',
-          'facebook': 'https://www.facebook.com',
-          'fb': 'https://www.facebook.com',
-          'youtube': 'https://www.youtube.com',
-          'yt': 'https://www.youtube.com',
-          'whatsapp': 'whatsapp://',
-          'gmail': 'https://mail.google.com',
-          'mail': 'https://mail.google.com',
-          'google': 'https://www.google.com',
-          'maps': 'https://maps.google.com',
-          'spotify': 'https://open.spotify.com',
-          'twitter': 'https://x.com',
-          'x': 'https://x.com',
-          'chatgpt': 'https://chatgpt.com',
-          'netflix': 'https://www.netflix.com',
-          'amazon': 'https://www.amazon.com',
-          'flipkart': 'https://www.flipkart.com',
-          'camera': 'camera'
-        };
-
-        const firstWord = cleanTarget.split(/\s+/)[0];
-        const lastWord = cleanTarget.split(/\s+/).pop();
-        const url = webMap[cleanTarget] || webMap[firstWord] || webMap[lastWord] || `https://www.${cleanTarget.replace(/[^a-z0-9]/g, '')}.com`;
-        const appName = cleanTarget.charAt(0).toUpperCase() + cleanTarget.slice(1);
-
-        if (url === 'camera') {
-          const camInput = document.getElementById('mCamInput');
-          if (camInput) camInput.click();
-        } else {
-          try {
-            const opened = window.open(url, '_blank');
-            if (!opened || opened.closed || typeof opened.closed === 'undefined') {
-              window.location.href = url;
-            }
-          } catch(e) {
-            window.location.href = url;
-          }
-        }
-
+        const appInfo = openAppWithFallback(cleanTarget);
         const openResult = {
-          content: `Opening ${appName} now.`,
+          content: `Opening ${appInfo.appName} application now (or website if not installed)...`,
           action: 'OPEN_URL',
-          url,
-          app: appName,
-          role: { id: 'assistant', name: 'Launcher', icon: '🚀' }
+          url: appInfo.webUrl,
+          appUrl: appInfo.appUri,
+          intentUri: appInfo.intentUri,
+          webUrl: appInfo.webUrl,
+          app: appInfo.appName,
+          icon: appInfo.icon,
+          role: { id: 'assistant', name: 'Launcher', icon: appInfo.icon || '🚀' }
         };
         appendMessage('assistant', openResult.content, openResult);
-        speakMobile(`Opening ${appName} now.`);
+        speakMobile(`Opening ${appInfo.appName} now.`);
         return;
       }
 
@@ -1915,20 +2053,13 @@
         openWhatsAppWithFallback();
       }
 
-      // Trigger App / URL Opener
-      if (data.action === 'OPEN_URL' || data.url) {
-        if (data.url === 'camera') {
+      // Trigger App / URL Opener (Native app priority)
+      if (data.action === 'OPEN_URL' || data.action === 'OPEN_APP' || data.url) {
+        if (data.url === 'camera' || data.appUri === 'camera') {
           const camInput = document.getElementById('mCamInput');
           if (camInput) camInput.click();
         } else if (data.action !== 'OPEN_WHATSAPP') {
-          try {
-            const opened = window.open(data.url, '_blank');
-            if (!opened || opened.closed || typeof opened.closed === 'undefined') {
-              window.location.href = data.url;
-            }
-          } catch(e) {
-            window.location.href = data.url;
-          }
+          openAppWithFallback(data.app || data.target || data.url);
         }
       }
 

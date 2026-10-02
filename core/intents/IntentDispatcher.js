@@ -432,7 +432,41 @@ export class IntentDispatcher {
     if (webServices[t]) {
       const url = webServices[t];
       this._spawnDetached(url);
-      return { content: `Opening ${target} in your browser...`, action: 'OPEN_URL', url, app: target, model: 'app-launcher' };
+      const appPkgs = {
+        'instagram': { pkg: 'com.instagram.android', scheme: 'instagram://app' },
+        'insta': { pkg: 'com.instagram.android', scheme: 'instagram://app' },
+        'youtube': { pkg: 'com.google.android.youtube', scheme: 'vnd.youtube://' },
+        'yt': { pkg: 'com.google.android.youtube', scheme: 'vnd.youtube://' },
+        'facebook': { pkg: 'com.facebook.katana', scheme: 'fb://' },
+        'fb': { pkg: 'com.facebook.katana', scheme: 'fb://' },
+        'spotify': { pkg: 'com.spotify.music', scheme: 'spotify://' },
+        'twitter': { pkg: 'com.twitter.android', scheme: 'twitter://' },
+        'x': { pkg: 'com.twitter.android', scheme: 'twitter://' },
+        'snapchat': { pkg: 'com.snapchat.android', scheme: 'snapchat://' },
+        'telegram': { pkg: 'org.telegram.messenger', scheme: 'tg://' },
+        'gmail': { pkg: 'com.google.android.gm', scheme: 'googlegmail://' },
+        'maps': { pkg: 'com.google.android.apps.maps', scheme: 'maps://' },
+        'google maps': { pkg: 'com.google.android.apps.maps', scheme: 'maps://' },
+        'netflix': { pkg: 'com.netflix.mediaclient', scheme: 'nflx://' },
+        'amazon': { pkg: 'com.amazon.mShop.android.shopping', scheme: 'amazon://' },
+        'flipkart': { pkg: 'com.flipkart.android', scheme: 'flipkart://' },
+        'chatgpt': { pkg: 'com.openai.chatgpt', scheme: 'chatgpt://' }
+      };
+      const meta = appPkgs[t];
+      const intentUrl = meta?.pkg
+        ? `intent:#Intent;package=${meta.pkg};action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=${encodeURIComponent(url)};end`
+        : '';
+      const appUrl = meta?.scheme || url;
+      return {
+        content: `Opening ${target} in your browser...`,
+        action: 'OPEN_URL',
+        url,
+        app: target,
+        appUrl,
+        intentUrl,
+        webUrl: url,
+        model: 'app-launcher'
+      };
     }
 
     // 3. Native Windows / Desktop Applications

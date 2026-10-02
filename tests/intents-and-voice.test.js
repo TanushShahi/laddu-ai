@@ -124,3 +124,13 @@ test('SpeechRecognizer: eliminates multi-word repeated phrases (draw a cute dog)
   assert.equal(res4, 'what is quantum physics');
 });
 
+test('IntentDispatcher: "open instagram" provides Android Intent and app scheme metadata', async () => {
+  const dispatcher = new IntentDispatcher();
+  const res = await dispatcher.dispatch('open instagram');
+  assert.equal(res.action, 'OPEN_URL');
+  assert.equal(res.url, 'https://www.instagram.com');
+  assert.ok(res.intentUrl.includes('com.instagram.android'));
+  assert.ok(res.intentUrl.includes('browser_fallback_url'));
+  assert.equal(res.appUrl, 'instagram://app');
+});
+
