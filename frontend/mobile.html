@@ -128,6 +128,7 @@
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
+      <button id="mBtnOpenAITools" class="action-btn outline-btn" style="padding:4px 8px;font-size:11px;color:var(--neon-cyan);" title="AI Tools Hub">⚡ AI TOOLS</button>
       <button id="mBtnOpenContacts" class="action-btn outline-btn" style="padding:4px 8px;font-size:11px;" title="Contacts">
         📞
       </button>
@@ -753,7 +754,7 @@
             'fb': 'https://www.facebook.com',
             'youtube': 'https://www.youtube.com',
             'yt': 'https://www.youtube.com',
-            'whatsapp': 'https://web.whatsapp.com',
+            'whatsapp': 'whatsapp://',
             'gmail': 'https://mail.google.com',
             'mail': 'https://mail.google.com',
             'google': 'https://www.google.com',
@@ -775,6 +776,90 @@
             url,
             app: openMatch[1],
             model: 'standalone-launcher'
+          };
+        }
+
+        
+        // A. AI Image Generation Intent (Instant & 100% Free)
+        const imgMatch = cleanLower.match(/^(?:generate|create|draw|make|paint)\s+(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of\s+)?(.+)$/i) || cleanLower.match(/^(?:draw|paint)\s+(.+)$/i);
+        if (imgMatch) {
+          const rawPrompt = imgMatch[1].trim();
+          const cleanPrompt = rawPrompt.replace(/^(?:me\s+)?(?:an?\s+)?/i, '').trim();
+          const imageUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(cleanPrompt) + '?width=1024&height=1024&nologo=true&enhance=true';
+          return {
+            content: 'Here is the AI image generated for **"' + cleanPrompt + '"**:',
+            action: 'AI_IMAGE_GENERATED',
+            imageUrl,
+            imagePrompt: cleanPrompt,
+            role: { id: 'assistant', name: 'Creative Studio (LADDU)', icon: '🎨' },
+            model: 'pollinations-genai'
+          };
+        }
+
+        // B. Multi-AI Tool Router: Perplexity (Research)
+        const perplexityMatch = cleanLower.match(/^(?:use\s+perplexity\s+(?:to\s+)?(?:research|search)?|deep\s+research|research\s+deeply\s+on|research)\s+(.+)$/i);
+        if (perplexityMatch) {
+          const topic = perplexityMatch[1].trim();
+          const perplexityUrl = 'https://www.perplexity.ai/search?q=' + encodeURIComponent(topic);
+          return {
+            content: 'I have compiled a deep research dispatch for **"' + topic + '"**. You can explore synthesized multi-source intelligence with real-time web citations:',
+            action: 'LAUNCH_AI_TOOL',
+            toolName: 'Perplexity AI',
+            toolIcon: '🔍',
+            toolDesc: 'Deep AI Research & Multi-Source Synthesis',
+            toolUrl: perplexityUrl,
+            topic,
+            role: { id: 'mentor', name: 'Research Intelligence (Perplexity)', icon: '🔍' },
+            model: 'perplexity-router'
+          };
+        }
+
+        // C. Multi-AI Tool Router: Gamma (Presentations / PPTs)
+        const gammaMatch = cleanLower.match(/^(?:use\s+gamma\s+(?:to\s+)?(?:make|generate|create)?|generate\s+ppt|make\s+ppt|create\s+ppt|generate\s+presentation|make\s+presentation|create\s+presentation|create\s+slides)\s+(?:on|about)?\s*(.+)$/i);
+        if (gammaMatch) {
+          const topic = gammaMatch[1].trim();
+          const gammaUrl = 'https://gamma.app';
+          const outline = '### 📊 Slide Deck Blueprint: ' + topic.toUpperCase() + '\n\n' +
+            '* **Slide 1: Title & Executive Vision** — Overview of ' + topic + '\n' +
+            '* **Slide 2: Core Problem & Challenges** — Market pain points\n' +
+            '* **Slide 3: Strategic Innovation** — Key features & advantages\n' +
+            '* **Slide 4: Implementation Roadmap** — Phased deployment milestones\n' +
+            '* **Slide 5: Conclusion & Expected Impact** — Strategic summary\n\n' +
+            '*You can convert this outline into an AI presentation directly on Gamma App below:*';
+          return {
+            content: outline,
+            action: 'LAUNCH_AI_TOOL',
+            toolName: 'Gamma App',
+            toolIcon: '📊',
+            toolDesc: 'AI Presentation & Slide Deck Generator',
+            toolUrl: gammaUrl,
+            topic,
+            role: { id: 'assistant', name: 'Presentation Architect (Gamma)', icon: '📊' },
+            model: 'gamma-router'
+          };
+        }
+
+        // D. Multi-AI Tool Router: Antigravity / v0 (App Development)
+        const devMatch = cleanLower.match(/^(?:use\s+(?:antigravity|v0|claude)\s+(?:to\s+)?(?:build|make|code)?|build\s+app|make\s+app|code\s+app|develop\s+app|create\s+website)\s+(?:for|about)?\s*(.+)$/i);
+        if (devMatch) {
+          const topic = devMatch[1].trim();
+          const devUrl = 'https://v0.dev';
+          const blueprint = '### 🚀 Software Architecture: ' + topic.toUpperCase() + '\n\n' +
+            '* **Frontend**: Modern Responsive PWA / Next.js with Sci-Fi HUD components\n' +
+            '* **Backend**: High-performance Node.js / REST & WebSockets\n' +
+            '* **AI Intelligence Layer**: Multimodal LLM + Grounded Vector Search\n' +
+            '* **Deployment**: 24/7 Cloud Autonomy with zero downtime\n\n' +
+            '*You can scaffold and run this code directly in Antigravity or v0 below:*';
+          return {
+            content: blueprint,
+            action: 'LAUNCH_AI_TOOL',
+            toolName: 'Antigravity / v0',
+            toolIcon: '🚀',
+            toolDesc: 'Autonomous App & Frontend Builder',
+            toolUrl: devUrl,
+            topic,
+            role: { id: 'mentor', name: 'Engineering Architect (Antigravity)', icon: '🚀' },
+            model: 'antigravity-router'
           };
         }
 
@@ -975,45 +1060,40 @@
 
     async function processMobileFile(file) {
       return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          const base64Data = e.target.result;
-          const isImg = (file.type || '').startsWith('image/');
-          let item = {
-            filename: file.name,
-            mimeType: file.type || (isImg ? 'image/jpeg' : 'application/octet-stream'),
-            data: base64Data,
-            type: isImg ? 'image' : 'document',
-            extractedText: ''
-          };
+        const isImg = (file.type || '').startsWith('image/');
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        const isText = (file.type || '').startsWith('text/') || /\.(txt|csv|json|md|py|js|html|xml|log)$/i.test(file.name);
 
-          // Try server upload to extract PDF/DOCX text & ingest to RAG
-          try {
-            const res = await fetch('/api/upload', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                filename: file.name,
-                mimeType: item.mimeType,
-                data: base64Data
-              })
+        if (isText) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            mPendingAttachments.push({
+              filename: file.name,
+              mimeType: file.type || 'text/plain',
+              type: 'document',
+              extractedText: e.target.result || '',
+              data: ''
             });
-            if (res.ok) {
-              const resJson = await res.json();
-              if (resJson.success) {
-                item.extractedText = resJson.extractedText || '';
-                item.type = resJson.type || item.type;
-              }
-            }
-          } catch (err) {
-            console.log('[Mobile] Upload offline, stored in memory.');
-          }
-
-          mPendingAttachments.push(item);
-          renderMobileAttachmentBar();
-          resolve();
-        };
-        reader.readAsDataURL(file);
+            renderMobileAttachmentBar();
+            resolve();
+          };
+          reader.readAsText(file);
+        } else {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const base64Data = e.target.result;
+            mPendingAttachments.push({
+              filename: file.name,
+              mimeType: file.type || (isPdf ? 'application/pdf' : 'image/jpeg'),
+              type: isImg ? 'image' : 'document',
+              data: base64Data,
+              extractedText: ''
+            });
+            renderMobileAttachmentBar();
+            resolve();
+          };
+          reader.readAsDataURL(file);
+        }
       });
     }
 
@@ -1163,39 +1243,71 @@
         mBtnVoice.classList.add('active');
       };
 
+      let speechAccumulator = '';
+      let speechDebounceTimer = null;
+
+      function dispatchAccumulatedSpeech() {
+        if (!speechAccumulator.trim()) return;
+        const rawSpoken = speechAccumulator.trim();
+        speechAccumulator = '';
+        const spoken = normalizeSpokenAliases(rawSpoken);
+        console.log('[LADDU Mobile Speech Dispatched Complete Sentence]:', spoken);
+
+        if (/\b(?:hey\s+laddu|laddu|jarvis)\b/i.test(spoken)) {
+          playWakeChime();
+        }
+
+        mVoiceState.textContent = 'TRANSCRIBED!';
+        mInput.placeholder = 'Command or converse...';
+
+        const cleanText = spoken.replace(/^(?:hey\s+)?(?:laddu|jarvis)[,\s]*/i, '').trim();
+
+        // Check for isolated incomplete command keywords
+        if (cleanText.toLowerCase() === 'call' || cleanText.toLowerCase() === 'dial') {
+          appendMessage('assistant', 'Who would you like me to call? Please tell me the name or phone number.');
+          speakMobile('Who would you like me to call?');
+          return;
+        }
+        if (cleanText.toLowerCase() === 'open' || cleanText.toLowerCase() === 'launch') {
+          appendMessage('assistant', 'Which application or website would you like me to open?');
+          speakMobile('Which application or website would you like me to open?');
+          return;
+        }
+
+        mInput.value = cleanText || spoken;
+        sendMobileChat();
+      }
+
       recognition.onresult = (e) => {
         if (isSpeakingAudio) return;
 
         let interim = '';
-        let finalTranscript = '';
+        let newFinal = '';
 
         for (let i = e.resultIndex; i < e.results.length; ++i) {
           if (e.results[i].isFinal) {
-            finalTranscript += e.results[i][0].transcript;
+            newFinal += e.results[i][0].transcript + ' ';
           } else {
             interim += e.results[i][0].transcript;
           }
         }
 
-        if (interim) {
-          const hearingText = normalizeSpokenAliases(interim);
-          mVoiceState.textContent = `HEARING: "${hearingText}"`;
-          mInput.placeholder = hearingText;
+        if (newFinal.trim()) {
+          speechAccumulator = (speechAccumulator + ' ' + newFinal).trim();
         }
 
-        if (finalTranscript.trim()) {
-          const rawSpoken = finalTranscript.trim();
-          const spoken = normalizeSpokenAliases(rawSpoken);
-          if (/\b(?:hey\s+laddu|laddu|jarvis)\b/i.test(spoken)) {
-            playWakeChime();
-          }
-          console.log('[LADDU Mobile Speech Final]:', spoken);
-          mVoiceState.textContent = 'TRANSCRIBED!';
-          mInput.placeholder = 'Command or converse...';
+        const displayText = normalizeSpokenAliases((speechAccumulator + ' ' + interim).trim());
+        if (displayText) {
+          mVoiceState.textContent = 'HEARING: "' + displayText + '"';
+          mInput.placeholder = displayText;
+        }
 
-          const cleanText = spoken.replace(/^(?:hey\s+)?(?:laddu|jarvis)[,\s]*/i, '').trim();
-          mInput.value = cleanText || spoken;
-          sendMobileChat();
+        // Wait 650ms after user pauses speaking so complete sentences like "call papa" or "open instagram" are never truncated
+        if (speechDebounceTimer) clearTimeout(speechDebounceTimer);
+        if (speechAccumulator.trim()) {
+          speechDebounceTimer = setTimeout(() => {
+            dispatchAccumulatedSpeech();
+          }, 650);
         }
       };
 
@@ -1225,6 +1337,13 @@
         isRecognizing = false;
         mBtnVoice.classList.remove('active');
         mBtnVoice.innerHTML = '<span class="btn-icon">🎙</span> PUSH TO COMMUNICATE';
+        if (speechDebounceTimer) {
+          clearTimeout(speechDebounceTimer);
+          speechDebounceTimer = null;
+        }
+        if (speechAccumulator && speechAccumulator.trim()) {
+          dispatchAccumulatedSpeech();
+        }
         if (siriModeActive && !isSpeakingAudio) {
           setTimeout(() => {
             if (siriModeActive && !isSpeakingAudio && recognition && !isRecognizing) {
@@ -1467,6 +1586,28 @@
       modalSettings.style.display = 'none';
     }
     document.getElementById('mBtnOpenSettings').addEventListener('click', openSettingsModal);
+
+    document.getElementById('mBtnOpenAITools')?.addEventListener('click', () => {
+      document.getElementById('modalAITools').style.display = 'flex';
+    });
+
+    window.openToolPrompt = function(toolName, baseUrl) {
+      document.getElementById('modalAITools').style.display = 'none';
+      const query = prompt('Enter topic to research with ' + toolName + ':');
+      if (query) {
+        window.open(baseUrl + encodeURIComponent(query), '_blank');
+      }
+    };
+
+    window.promptGenerateImage = function() {
+      document.getElementById('modalAITools').style.display = 'none';
+      const promptText = prompt('Describe the image you want LADDU to generate:');
+      if (promptText) {
+        mInput.value = 'generate image of ' + promptText;
+        sendMobileChat();
+      }
+    };
+  
 
     mSelectSpeechLang?.addEventListener('change', () => {
       const selected = mSelectSpeechLang.value;

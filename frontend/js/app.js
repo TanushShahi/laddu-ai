@@ -28,6 +28,45 @@ function initClock() {
 // ==========================================
 // 2. WEBSOCKET CONNECTION
 // ==========================================
+
+// Native WhatsApp Protocol Launcher with Auto Web Fallback (Desktop)
+function openWhatsAppWithFallback(phone = '', text = '') {
+  const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+  let appUrl = 'whatsapp://';
+  if (cleanPhone) {
+    appUrl = 'whatsapp://send?phone=' + cleanPhone + (text ? '&text=' + encodeURIComponent(text) : '');
+  }
+
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  let webUrl = 'https://web.whatsapp.com';
+  if (cleanPhone) {
+    webUrl = isMobile 
+      ? 'https://api.whatsapp.com/send?phone=' + cleanPhone + (text ? '&text=' + encodeURIComponent(text) : '')
+      : 'https://web.whatsapp.com/send?phone=' + cleanPhone + (text ? '&text=' + encodeURIComponent(text) : '');
+  }
+
+  console.log('[LADDU Desktop] Attempting to launch native WhatsApp application via protocol:', appUrl);
+  const startTime = Date.now();
+  let appOpened = false;
+
+  const onBlur = () => {
+    appOpened = true;
+    window.removeEventListener('blur', onBlur);
+  };
+  window.addEventListener('blur', onBlur);
+
+  window.location.href = appUrl;
+
+  setTimeout(() => {
+    window.removeEventListener('blur', onBlur);
+    if (!appOpened && (Date.now() - startTime) < 2200) {
+      console.log('[LADDU Desktop] Native WhatsApp app not opened. Falling back to WhatsApp Web:', webUrl);
+      window.open(webUrl, '_blank');
+    }
+  }, 1200);
+}
+window.openWhatsAppWithFallback = openWhatsAppWithFallback;
+
 function initWebSocket() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -370,50 +409,38 @@ function initSpeechRecognition() {
 
   const defaultPlaceholder = 'Command LADDU, ask anything, or drag & drop files...';
 
-  recognition.onresult = async (event) => {
-    if (isSpeakingAudio) {
-      console.log('[LADDU] Discarding acoustic feedback while speaking.');
-      return;
-    }
+  let deskSpeechAccumulator = '';
+  let deskSpeechDebounceTimer = null;
 
-    let interimTranscript = '';
-    let finalTranscript = '';
+  async function dispatchDeskAccumulatedSpeech() {
+    if (!deskSpeechAccumulator.trim()) return;
+    const rawSpoken = deskSpeechAccumulator.trim();
+    deskSpeechAccumulator = '';
 
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const item = event.results[i];
-      const text = item[0].transcript;
-      if (item.isFinal) {
-        finalTranscript += text + ' ';
-      } else {
-        interimTranscript += text;
-      }
-    }
-
-    const chatInput = document.getElementById('chatInput');
-    const coreStateText = document.getElementById('coreStateText');
-
-    // Display live interim audio feedback
-    if (interimTranscript.trim()) {
-      let hearingText = interimTranscript.trim();
-      hearingText = hearingText.replace(/\b(?:ladder|let do|lead you|ladoo|laddoo|ladu|luddu|ludo)\b/gi, 'laddu');
-      if (coreStateText) coreStateText.textContent = `HEARING: "${hearingText}"`;
-      if (chatInput) chatInput.placeholder = `🎙️ Hearing: "${hearingText}"...`;
-    }
-
-    let cleanedFinal = finalTranscript.trim();
-    if (!cleanedFinal) return;
-
-    // Multi-Accent & Phonetic Alias Normalization (ladder -> laddu)
-    cleanedFinal = cleanedFinal.replace(/\b(?:ladder|latter|latte|let\s*do|lead\s*you|let\s*you|ladoo|laddoo|ladu|luddu|laadu|laru|lattu|lallu|lalu|labbu|radu|raddu|radoo)\b/gi, 'laddu');
+    let cleanedFinal = rawSpoken.replace(/\b(?:ladder|latter|latte|let\s*do|lead\s*you|let\s*you|ladoo|laddoo|ladu|luddu|laadu|laru|lattu|lallu|lalu|labbu|radu|raddu|radoo)\b/gi, 'laddu');
     cleanedFinal = cleanedFinal.replace(/\b(?:hey|hay|hi|hello|ok|okay|sun|suno|are|arre|oye|oi|ae)\s+laddu\b/gi, 'hey laddu');
+
     if (/\b(?:hey\s+laddu|laddu|jarvis)\b/i.test(cleanedFinal)) {
       playWakeChime();
     }
 
+    const chatInput = document.getElementById('chatInput');
     if (chatInput) chatInput.placeholder = defaultPlaceholder;
-    console.log('[LADDU Voice Input Final]:', cleanedFinal);
+    console.log('[LADDU Desktop Voice Final Dispatched]:', cleanedFinal);
 
-    // Immediately display user transcript in conversation feed
+    // Check for single incomplete keywords
+    const cleanCommand = cleanedFinal.replace(/^(?:hey\s+)?(?:laddu|jarvis)[,\s]*/i, '').trim();
+    if (cleanCommand.toLowerCase() === 'call' || cleanCommand.toLowerCase() === 'dial') {
+      appendChatMessage('assistant', 'Who would you like me to call? Please tell me the name or phone number.');
+      speakBrowser({ text: 'Who would you like me to call?' });
+      return;
+    }
+    if (cleanCommand.toLowerCase() === 'open' || cleanCommand.toLowerCase() === 'launch') {
+      appendChatMessage('assistant', 'Which application or website would you like me to open?');
+      speakBrowser({ text: 'Which application or website would you like me to open?' });
+      return;
+    }
+
     appendChatMessage('user', cleanedFinal);
     setAIActivityState('THINKING');
 
@@ -426,7 +453,7 @@ function initSpeechRecognition() {
         payload: { text: cleanedFinal, features, forceExecution: true }
       }));
     } else {
-      // 2. Direct HTTP Fallback if WebSocket dropped
+      // 2. HTTP Fallback
       try {
         const res = await fetch('/api/chat', {
           method: 'POST',
@@ -442,13 +469,52 @@ function initSpeechRecognition() {
         if (data.role) updateRolePill(data.role, false);
         appendChatMessage('assistant', data.content, data.citations || [], data.role, data);
         speakBrowser({ text: data.content, rate: data.role?.voiceSettings?.rate, pitch: data.role?.voiceSettings?.pitch, telUri: data.telUri, url: data.url });
-        if (data.telUri || data.action === 'CALL_PHONE') triggerDesktopCall(data);
-        if (data.url) { try { window.open(data.url, '_blank'); } catch(e){} }
       } catch (err) {
-        console.error('[LADDU] Chat fallback error:', err);
+        // 3. Standalone Client Engine Fallback
+        const autonomousRes = await processDesktopAutonomous(cleanedFinal);
+        appendChatMessage('assistant', autonomousRes.content, autonomousRes.citations || [], autonomousRes.role, autonomousRes);
+        speakBrowser({ text: autonomousRes.content });
       } finally {
         setAIActivityState('IDLE');
       }
+    }
+  }
+
+  recognition.onresult = (event) => {
+    if (isSpeakingAudio) return;
+
+    let interimTranscript = '';
+    let newFinal = '';
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const item = event.results[i];
+      if (item.isFinal) {
+        newFinal += item[0].transcript + ' ';
+      } else {
+        interimTranscript += item[0].transcript;
+      }
+    }
+
+    if (newFinal.trim()) {
+      deskSpeechAccumulator = (deskSpeechAccumulator + ' ' + newFinal).trim();
+    }
+
+    const chatInput = document.getElementById('chatInput');
+    const coreStateText = document.getElementById('coreStateText');
+
+    const displayTranscript = (deskSpeechAccumulator + ' ' + interimTranscript).trim();
+    if (displayTranscript) {
+      let hearingText = displayTranscript.replace(/\b(?:ladder|let do|lead you|ladoo|laddoo|ladu|luddu|ludo)\b/gi, 'laddu');
+      if (coreStateText) coreStateText.textContent = 'HEARING: "' + hearingText + '"';
+      if (chatInput) chatInput.placeholder = '🎙️ Hearing: "' + hearingText + '"...';
+    }
+
+    // Debounce: Wait 650ms of silence so "call papa" or "open instagram" are never truncated
+    if (deskSpeechDebounceTimer) clearTimeout(deskSpeechDebounceTimer);
+    if (deskSpeechAccumulator.trim()) {
+      deskSpeechDebounceTimer = setTimeout(() => {
+        dispatchDeskAccumulatedSpeech();
+      }, 650);
     }
   };
 
@@ -664,6 +730,52 @@ function appendChatMessage(role, text, citations = [], roleInfo = null, actionMe
   }
 
   let actionCardHtml = '';
+
+    // Render AI Generated Image Card
+    if (actionMeta && (actionMeta.action === 'AI_IMAGE_GENERATED' || actionMeta.imageUrl)) {
+      actionCardHtml += '<div style="margin-top:10px;padding:12px;background:rgba(0,0,0,0.6);border:1px solid var(--neon-cyan);border-radius:10px;box-shadow:0 0 20px rgba(0,240,255,0.25);">' +
+        '<div style="font-family:var(--font-hud);font-size:11px;color:var(--neon-cyan);margin-bottom:8px;">🎨 LADDU AI IMAGE STUDIO</div>' +
+        '<div style="position:relative;border-radius:8px;overflow:hidden;margin-bottom:8px;background:#000;">' +
+          '<img src="' + actionMeta.imageUrl + '" alt="' + (actionMeta.imagePrompt || '') + '" style="width:100%;max-height:420px;object-fit:cover;display:block;border-radius:8px;" onclick="window.open(\'' + actionMeta.imageUrl + '\', \'_blank\')">' +
+        '</div>' +
+        '<div style="font-size:12px;color:#fff;font-style:italic;margin-bottom:10px;">\"' + (actionMeta.imagePrompt || '') + '\"</div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<a href="' + actionMeta.imageUrl + '" target="_blank" download="laddu-image.jpg" class="action-btn glow-btn" style="text-decoration:none;padding:6px 14px;font-size:11px;">📥 DOWNLOAD IMAGE</a>' +
+          '<button onclick="window.open(\'' + actionMeta.imageUrl + '\', \'_blank\')" class="action-btn outline-btn" style="padding:6px 14px;font-size:11px;">🔍 FULLSCREEN</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // Render Multi-AI Tool Card (Perplexity, Gamma, Antigravity)
+    if (actionMeta && (actionMeta.action === 'LAUNCH_AI_TOOL' || actionMeta.toolUrl)) {
+      actionCardHtml += '<div style="margin-top:10px;padding:12px 14px;background:linear-gradient(135deg, rgba(0,240,255,0.08), rgba(187,0,255,0.08));border:1px solid var(--neon-cyan);border-radius:8px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<span style="font-size:22px;">' + (actionMeta.toolIcon || '⚡') + '</span>' +
+            '<div>' +
+              '<div style="font-family:var(--font-hud);font-size:13px;color:#fff;font-weight:700;">' + actionMeta.toolName + '</div>' +
+              '<div style="font-size:10px;color:var(--text-dim);">' + (actionMeta.toolDesc || '') + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<a href="' + actionMeta.toolUrl + '" target="_blank" class="action-btn glow-btn" style="text-decoration:none;padding:6px 14px;font-size:11px;white-space:nowrap;">' +
+            'LAUNCH ↗' +
+          '</a>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // Render Native WhatsApp Action Card
+    if (actionMeta && actionMeta.action === 'OPEN_WHATSAPP') {
+      actionCardHtml += '<div style="margin-top:10px;padding:12px 14px;background:rgba(37,211,102,0.1);border:1px solid #25D366;border-radius:8px;">' +
+        '<div style="font-family:var(--font-hud);font-size:11px;color:#25D366;margin-bottom:6px;">💬 WHATSAPP DISPATCH</div>' +
+        '<div style="font-size:12px;color:#fff;margin-bottom:8px;">Dispatched to WhatsApp application. If not installed, launch Web:</div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button onclick="openWhatsAppWithFallback()" class="action-btn" style="background:#25D366;color:#000;border:none;padding:6px 14px;font-size:11px;font-weight:700;">📱 OPEN APP</button>' +
+          '<a href="https://web.whatsapp.com" target="_blank" class="action-btn outline-btn" style="text-decoration:none;padding:6px 14px;font-size:11px;">🌐 WEB</a>' +
+        '</div>' +
+      '</div>';
+    }
+  
   if (actionMeta) {
     // 1. Direct Phone Call / Speed Dial Card
     if (actionMeta.action === 'CALL_PHONE' || actionMeta.telUri) {
@@ -986,10 +1098,21 @@ async function processDesktopAutonomous(rawText, currentAttachments = []) {
     };
   }
 
-  // 2. Open Web Service / App
-  const openMatch = cleanLower.match(/^(?:open|launch|start|go\s+to|navigate\s+to|visit)\s+(.+)$/i);
+  // 2. Open Web Service / App (Native WhatsApp First)
   if (openMatch) {
     const target = openMatch[1].trim().toLowerCase();
+    if (target === 'whatsapp' || target === 'whats app') {
+      openWhatsAppWithFallback();
+      return {
+        content: 'Opening WhatsApp application now...',
+        action: 'OPEN_WHATSAPP',
+        appUrl: 'whatsapp://',
+        webUrl: 'https://web.whatsapp.com',
+        app: 'WhatsApp',
+        role: { id: 'assistant', name: 'Executive Assistant (JARVIS)', icon: '🤖' },
+        model: 'standalone-launcher'
+      };
+    }
     const webMap = {
       'youtube': 'https://www.youtube.com',
       'google': 'https://www.google.com',
@@ -1008,6 +1131,90 @@ async function processDesktopAutonomous(rawText, currentAttachments = []) {
       app: openMatch[1],
       role: { id: 'assistant', name: 'Executive Assistant (JARVIS)', icon: '🤖' },
       model: 'standalone-launcher'
+    };
+  }
+
+  
+  // A. AI Image Generation Intent (Instant & 100% Free)
+  const imgMatch = cleanLower.match(/^(?:generate|create|draw|make|paint)\s+(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of\s+)?(.+)$/i) || cleanLower.match(/^(?:draw|paint)\s+(.+)$/i);
+  if (imgMatch) {
+    const rawPrompt = imgMatch[1].trim();
+    const cleanPrompt = rawPrompt.replace(/^(?:me\s+)?(?:an?\s+)?/i, '').trim();
+    const imageUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(cleanPrompt) + '?width=1024&height=1024&nologo=true&enhance=true';
+    return {
+      content: 'Here is the AI image generated for **"' + cleanPrompt + '"**:',
+      action: 'AI_IMAGE_GENERATED',
+      imageUrl,
+      imagePrompt: cleanPrompt,
+      role: { id: 'assistant', name: 'Creative Studio (LADDU)', icon: '🎨' },
+      model: 'pollinations-genai'
+    };
+  }
+
+  // B. Multi-AI Tool Router: Perplexity (Research)
+  const perplexityMatch = cleanLower.match(/^(?:use\s+perplexity\s+(?:to\s+)?(?:research|search)?|deep\s+research|research\s+deeply\s+on|research)\s+(.+)$/i);
+  if (perplexityMatch) {
+    const topic = perplexityMatch[1].trim();
+    const perplexityUrl = 'https://www.perplexity.ai/search?q=' + encodeURIComponent(topic);
+    return {
+      content: 'I have compiled a deep research dispatch for **"' + topic + '"**. You can explore synthesized multi-source intelligence with real-time web citations:',
+      action: 'LAUNCH_AI_TOOL',
+      toolName: 'Perplexity AI',
+      toolIcon: '🔍',
+      toolDesc: 'Deep AI Research & Multi-Source Synthesis',
+      toolUrl: perplexityUrl,
+      topic,
+      role: { id: 'mentor', name: 'Research Intelligence (Perplexity)', icon: '🔍' },
+      model: 'perplexity-router'
+    };
+  }
+
+  // C. Multi-AI Tool Router: Gamma (Presentations / PPTs)
+  const gammaMatch = cleanLower.match(/^(?:use\s+gamma\s+(?:to\s+)?(?:make|generate|create)?|generate\s+ppt|make\s+ppt|create\s+ppt|generate\s+presentation|make\s+presentation|create\s+presentation|create\s+slides)\s+(?:on|about)?\s*(.+)$/i);
+  if (gammaMatch) {
+    const topic = gammaMatch[1].trim();
+    const gammaUrl = 'https://gamma.app';
+    const outline = '### 📊 Slide Deck Blueprint: ' + topic.toUpperCase() + '\n\n' +
+      '* **Slide 1: Title & Executive Vision** — Overview of ' + topic + '\n' +
+      '* **Slide 2: Core Problem & Challenges** — Market pain points\n' +
+      '* **Slide 3: Strategic Innovation** — Key features & advantages\n' +
+      '* **Slide 4: Implementation Roadmap** — Phased deployment milestones\n' +
+      '* **Slide 5: Conclusion & Expected Impact** — Strategic summary\n\n' +
+      '*You can convert this outline into an AI presentation directly on Gamma App below:*';
+    return {
+      content: outline,
+      action: 'LAUNCH_AI_TOOL',
+      toolName: 'Gamma App',
+      toolIcon: '📊',
+      toolDesc: 'AI Presentation & Slide Deck Generator',
+      toolUrl: gammaUrl,
+      topic,
+      role: { id: 'assistant', name: 'Presentation Architect (Gamma)', icon: '📊' },
+      model: 'gamma-router'
+    };
+  }
+
+  // D. Multi-AI Tool Router: Antigravity / v0 (App Development)
+  const devMatch = cleanLower.match(/^(?:use\s+(?:antigravity|v0|claude)\s+(?:to\s+)?(?:build|make|code)?|build\s+app|make\s+app|code\s+app|develop\s+app|create\s+website)\s+(?:for|about)?\s*(.+)$/i);
+  if (devMatch) {
+    const topic = devMatch[1].trim();
+    const devUrl = 'https://v0.dev';
+    const blueprint = '### 🚀 Software Architecture: ' + topic.toUpperCase() + '\n\n' +
+      '* **Frontend**: Modern Responsive PWA / Next.js with Sci-Fi HUD components\n' +
+      '* **Backend**: High-performance Node.js / REST & WebSockets\n' +
+      '* **AI Intelligence Layer**: Multimodal LLM + Grounded Vector Search\n' +
+      '* **Deployment**: 24/7 Cloud Autonomy with zero downtime\n\n' +
+      '*You can scaffold and run this code directly in Antigravity or v0 below:*';
+    return {
+      content: blueprint,
+      action: 'LAUNCH_AI_TOOL',
+      toolName: 'Antigravity / v0',
+      toolIcon: '🚀',
+      toolDesc: 'Autonomous App & Frontend Builder',
+      toolUrl: devUrl,
+      topic,
+      role: { id: 'mentor', name: 'Engineering Architect (Antigravity)', icon: '🚀' },
+      model: 'antigravity-router'
     };
   }
 

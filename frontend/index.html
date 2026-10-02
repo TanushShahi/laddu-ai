@@ -567,6 +567,64 @@
     </div>
   </div>
 
+  
+  <!-- AI Tools Hub Modal -->
+  <div class="hud-modal" id="modalDesktopAITools" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);z-index:1000;align-items:center;justify-content:center;padding:16px;">
+    <div class="modal-box glass-panel" style="max-width:560px;width:100%;max-height:85vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 class="modal-title" style="margin:0;font-size:15px;color:var(--neon-cyan);">⚡ MULTI-AI SUPER TOOLS HUB</h3>
+        <button onclick="document.getElementById('modalDesktopAITools').style.display='none'" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">
+        Command LADDU or click any specialized intelligence engine to accelerate your workflow:
+      </p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <!-- Perplexity -->
+        <div style="background:rgba(0,240,255,0.06);border:1px solid var(--border-cyan);border-radius:8px;padding:12px;">
+          <div style="font-family:var(--font-hud);font-size:13px;color:#fff;font-weight:700;margin-bottom:4px;">🔍 Perplexity AI</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Deep Research & Real-Time Citations</div>
+          <button onclick="openDesktopToolPrompt('Perplexity', 'https://www.perplexity.ai/search?q=')" class="action-btn glow-btn" style="width:100%;padding:6px;font-size:11px;">RESEARCH ↗</button>
+        </div>
+
+        <!-- Gamma -->
+        <div style="background:rgba(187,0,255,0.06);border:1px solid rgba(187,0,255,0.3);border-radius:8px;padding:12px;">
+          <div style="font-family:var(--font-hud);font-size:13px;color:#fff;font-weight:700;margin-bottom:4px;">📊 Gamma App</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Instant AI Slide Decks & Presentations</div>
+          <a href="https://gamma.app" target="_blank" class="action-btn glow-btn" style="text-decoration:none;display:block;text-align:center;width:100%;box-sizing:border-box;padding:6px;font-size:11px;background:#bb00ff;border:none;color:#fff;">CREATE PPT ↗</a>
+        </div>
+
+        <!-- Antigravity / v0 -->
+        <div style="background:rgba(0,255,170,0.06);border:1px solid rgba(0,255,170,0.3);border-radius:8px;padding:12px;">
+          <div style="font-family:var(--font-hud);font-size:13px;color:#fff;font-weight:700;margin-bottom:4px;">🚀 Antigravity / v0</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Autonomous App & Full-Stack Coding</div>
+          <a href="https://v0.dev" target="_blank" class="action-btn glow-btn" style="text-decoration:none;display:block;text-align:center;width:100%;box-sizing:border-box;padding:6px;font-size:11px;background:var(--neon-green);border:none;color:#000;">BUILD APP ↗</a>
+        </div>
+
+        <!-- LADDU Image Studio -->
+        <div style="background:rgba(255,170,0,0.06);border:1px solid rgba(255,170,0,0.3);border-radius:8px;padding:12px;">
+          <div style="font-family:var(--font-hud);font-size:13px;color:#fff;font-weight:700;margin-bottom:4px;">🎨 LADDU Image Studio</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">High-Res AI Image Generation (Free)</div>
+          <button onclick="promptDesktopGenerateImage()" class="action-btn glow-btn" style="width:100%;padding:6px;font-size:11px;background:var(--neon-amber);border:none;color:#000;">DRAW IMAGE ↗</button>
+        </div>
+
+        <!-- ChatGPT -->
+        <div style="background:rgba(0,119,255,0.06);border:1px solid rgba(0,119,255,0.3);border-radius:8px;padding:12px;">
+          <div style="font-family:var(--font-hud);font-size:13px;color:#fff;font-weight:700;margin-bottom:4px;">💬 ChatGPT</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Long-Form Writing & Ideation</div>
+          <a href="https://chatgpt.com" target="_blank" class="action-btn outline-btn" style="text-decoration:none;display:block;text-align:center;width:100%;box-sizing:border-box;padding:6px;font-size:11px;">OPEN CHATGPT ↗</a>
+        </div>
+
+        <!-- Canva -->
+        <div style="background:rgba(0,240,255,0.06);border:1px solid var(--border-cyan);border-radius:8px;padding:12px;">
+          <div style="font-family:var(--font-hud);font-size:13px;color:#fff;font-weight:700;margin-bottom:4px;">✨ Canva AI</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Graphics, Posters & Social Media</div>
+          <a href="https://www.canva.com" target="_blank" class="action-btn outline-btn" style="text-decoration:none;display:block;text-align:center;width:100%;box-sizing:border-box;padding:6px;font-size:11px;">DESIGN CANVA ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  
   <!-- Settings Modal (AI Model & API Keys) -->
   <div class="hud-modal" id="modalDesktopSettings">
     <div class="modal-box glass-panel" style="max-width:520px;">
