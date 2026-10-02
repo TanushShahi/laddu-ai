@@ -85,56 +85,59 @@ function removeSpeechStutter(text) {
 window.removeSpeechStutter = removeSpeechStutter;
 
 function openWhatsAppWithFallback(phone = '', text = '') {
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
   const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+
   let appUrl = 'whatsapp://';
-  if (cleanPhone) {
-    appUrl = 'whatsapp://send?phone=' + cleanPhone + (text ? '&text=' + encodeURIComponent(text) : '');
-  }
-
+  let intentUrl = '';
   let webUrl = 'https://web.whatsapp.com';
+
   if (cleanPhone) {
-    webUrl = isMobile 
-      ? 'https://api.whatsapp.com/send?phone=' + cleanPhone + (text ? '&text=' + encodeURIComponent(text) : '')
-      : 'https://web.whatsapp.com/send?phone=' + cleanPhone + (text ? '&text=' + encodeURIComponent(text) : '');
+    const waPhone = cleanPhone.length === 10 ? ('91' + cleanPhone) : cleanPhone;
+    appUrl = 'whatsapp://send?phone=' + waPhone + (text ? '&text=' + encodeURIComponent(text) : '');
+    webUrl = 'https://web.whatsapp.com/send?phone=' + waPhone + (text ? '&text=' + encodeURIComponent(text) : '');
+    intentUrl = 'intent://send?phone=' + waPhone + (text ? '&text=' + encodeURIComponent(text) : '') + '#Intent;package=com.whatsapp;scheme=whatsapp;action=android.intent.action.VIEW;S.browser_fallback_url=' + encodeURIComponent(webUrl) + ';end';
+  } else {
+    appUrl = 'whatsapp://';
+    webUrl = 'https://web.whatsapp.com';
+    intentUrl = 'intent:#Intent;package=com.whatsapp;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=' + encodeURIComponent(webUrl) + ';end';
   }
 
-  console.log('[LADDU Desktop] Executing WhatsApp launch. App URL:', appUrl, 'Web URL:', webUrl);
+  console.log('[LADDU Desktop] Executing WhatsApp launch. App URL:', appUrl, 'Intent URL:', intentUrl);
 
-  let appOpened = false;
-  const markOpened = () => { appOpened = true; };
-  window.addEventListener('blur', markOpened, { once: true });
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) appOpened = true;
-  }, { once: true });
-
-  if (isMobile) {
+  if (isAndroid) {
+    try {
+      window.location.href = intentUrl;
+    } catch(e) {
+      const a = document.createElement('a');
+      a.href = intentUrl;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => a.remove(), 1000);
+    }
+  } else if (isIOS) {
     try {
       window.location.href = appUrl;
-    } catch (e) {
-      console.warn('[LADDU Desktop] Location assign failed:', e);
+    } catch(e) {
+      const a = document.createElement('a');
+      a.href = appUrl;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => a.remove(), 1000);
     }
   } else {
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
+    // Windows Desktop / Mac: anchor click triggers whatsapp:// protocol
+    const a = document.createElement('a');
+    a.href = appUrl;
+    document.body.appendChild(a);
     try {
-      iframe.src = appUrl;
-    } catch (e) {
+      a.click();
+    } catch(e) {
       window.location.href = appUrl;
     }
-    setTimeout(() => {
-      try { iframe.remove(); } catch(e){}
-    }, 2500);
+    setTimeout(() => a.remove(), 1000);
   }
-
-  setTimeout(() => {
-    window.removeEventListener('blur', markOpened);
-    if (!appOpened && !document.hidden) {
-      console.log('[LADDU Desktop] Native WhatsApp app not detected or not launched. Redirecting to WhatsApp Web:', webUrl);
-      window.location.href = webUrl;
-    }
-  }, 1600);
 }
 window.openWhatsAppWithFallback = openWhatsAppWithFallback;
 window.openDesktopContactsModal = function() {
@@ -625,6 +628,16 @@ async function toggleListening() {
     return;
   }
 
+  // Cancel any ongoing speech
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+  isSpeakingAudio = false;
+  if (deskSpeechWatchdog) {
+    clearTimeout(deskSpeechWatchdog);
+    deskSpeechWatchdog = null;
+  }
+
   isListening = !isListening;
   const btn = document.getElementById('btnToggleVoice');
   const label = document.getElementById('voiceBtnLabel');
@@ -691,6 +704,8 @@ if ('speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = () => { getOptimalVoice(); };
 }
 
+let deskSpeechWatchdog = null;
+
 function speakBrowser(speechPayload) {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
@@ -699,7 +714,7 @@ function speakBrowser(speechPayload) {
   if (speechPayload.telUri) {
     window.location.href = speechPayload.telUri;
   }
-  if (speechPayload.url) {
+  if (speechPayload.url && speechPayload.action !== 'OPEN_WHATSAPP') {
     window.open(speechPayload.url, '_blank');
   }
 
@@ -713,16 +728,14 @@ function speakBrowser(speechPayload) {
   utterance.rate = speechPayload.rate || 1.0;
   utterance.pitch = speechPayload.pitch ? speechPayload.pitch : (isFemale ? 1.15 : 1.0);
 
-  utterance.onstart = () => {
-    isSpeakingAudio = true;
-    setAIActivityState('SPEAKING');
-    // Pause recognition to prevent mic from hearing speakers
-    if (recognition && isListening) {
-      try { recognition.abort(); } catch {}
+  let finished = false;
+  const finishDeskSpeech = () => {
+    if (finished) return;
+    finished = true;
+    if (deskSpeechWatchdog) {
+      clearTimeout(deskSpeechWatchdog);
+      deskSpeechWatchdog = null;
     }
-  };
-
-  utterance.onend = () => {
     // 450ms echo cancellation dampening delay
     setTimeout(() => {
       isSpeakingAudio = false;
@@ -733,13 +746,25 @@ function speakBrowser(speechPayload) {
     }, 450);
   };
 
-  utterance.onerror = () => {
-    isSpeakingAudio = false;
-    setAIActivityState('IDLE');
+  utterance.onstart = () => {
+    isSpeakingAudio = true;
+    setAIActivityState('SPEAKING');
+    // Pause recognition to prevent mic from hearing speakers
     if (recognition && isListening) {
-      try { recognition.start(); } catch {}
+      try { recognition.abort(); } catch {}
     }
   };
+
+  utterance.onend = finishDeskSpeech;
+  utterance.onerror = finishDeskSpeech;
+
+  // Watchdog timer for SpeechSynthesisUtterance
+  const estDuration = Math.max(3000, Math.min(25000, ((speechPayload.text || '').length / 10) * 1000 + 3000));
+  if (deskSpeechWatchdog) clearTimeout(deskSpeechWatchdog);
+  deskSpeechWatchdog = setTimeout(() => {
+    console.warn('[LADDU Desktop] Speech synthesis watchdog triggered. Resuming IDLE state.');
+    finishDeskSpeech();
+  }, estDuration);
 
   window.speechSynthesis.speak(utterance);
 }
@@ -1042,28 +1067,33 @@ async function sendChat() {
     }
 
     let data = null;
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
-      const res = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: effectiveMsg,
-          speaker: activeSpeaker,
-          features: audioFeatures,
-          webSearch: isWebSearchActive,
-          images: currentAttachments.filter(a => a.type === 'image').map(a => ({ mimeType: a.mimeType, data: a.data })),
-          documents: currentAttachments.filter(a => a.type === 'document').map(a => ({ filename: a.filename, text: a.extractedText }))
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      if (res.ok) {
-        data = await res.json();
+    const isGitHubPages = location.hostname.endsWith('github.io') || location.protocol === 'file:';
+    const shouldTryServer = !!customRemote || !isGitHubPages;
+
+    if (shouldTryServer) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: effectiveMsg,
+            speaker: activeSpeaker,
+            features: audioFeatures,
+            webSearch: isWebSearchActive,
+            images: currentAttachments.filter(a => a.type === 'image').map(a => ({ mimeType: a.mimeType, data: a.data })),
+            documents: currentAttachments.filter(a => a.type === 'document').map(a => ({ filename: a.filename, text: a.extractedText }))
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch (netErr) {
+        // Laptop is switched off or unreachable — trigger Autonomous Cloud Engine
       }
-    } catch (netErr) {
-      // Laptop is switched off or unreachable — trigger Autonomous Cloud Engine
     }
 
     if (!data) {
@@ -2469,8 +2499,11 @@ window.addEventListener('beforeinstallprompt', (e) => {
 function initServiceWorker() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').then(
-        (reg) => console.log('[LADDU PWA] Service Worker registered with scope:', reg.scope),
+      navigator.serviceWorker.register('./sw.js').then(
+        (reg) => {
+          console.log('[LADDU PWA] Service Worker registered with scope:', reg.scope);
+          try { reg.update(); } catch(e){}
+        },
         (err) => console.warn('[LADDU PWA] Service Worker registration failed:', err)
       );
     });
