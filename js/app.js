@@ -1,3 +1,23 @@
+window.openDesktopToolPrompt = function(toolName, baseUrl) {
+  const m = document.getElementById('modalDesktopAITools');
+  if (m) m.style.display = 'none';
+  const query = prompt('Enter topic to research with ' + toolName + ':');
+  if (query) {
+    window.open(baseUrl + encodeURIComponent(query), '_blank');
+  }
+};
+window.promptDesktopGenerateImage = function() {
+  const m = document.getElementById('modalDesktopAITools');
+  if (m) m.style.display = 'none';
+  const promptText = prompt('Describe the image you want LADDU to generate:');
+  if (promptText) {
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) {
+      chatInput.value = 'generate image of ' + promptText;
+      if (typeof sendChat === 'function') sendChat();
+    }
+  }
+};
 window.switchTab = function(tabId) {
   document.querySelectorAll('.nav-btn').forEach(b => {
     if (b.dataset.tab === tabId) b.classList.add('active');
@@ -509,7 +529,7 @@ function initSpeechRecognition() {
 
     // Check client interceptors (Image, Tools, WhatsApp)
     const lowerCmd = cleanCommand.toLowerCase();
-    const imgM = lowerCmd.match(/^(?:generate|create|draw|make|paint)\s+(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of\s+)?(.+)$/i) || lowerCmd.match(/^(?:draw|paint)\s+(.+)$/i);
+    const imgM = lowerCmd.match(/(?:generate|create|draw|make|paint)?\s*(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of|for|about|on)?\s*(.+)/i) || lowerCmd.match(/^(?:draw|paint)\s+(.+)$/i);
     if (imgM) {
       const cleanP = imgM[1].replace(/^(?:me\s+)?(?:an?\s+)?/i, '').trim();
       const imageUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(cleanP) + '?width=1024&height=1024&nologo=true&enhance=true';
@@ -583,20 +603,16 @@ function initSpeechRecognition() {
   recognition.onresult = (event) => {
     if (isSpeakingAudio) return;
 
-    let finalPart = '';
-    let interimPart = '';
-
+    // Build complete utterance by joining all continuous chunks across final and interim stream
+    let fullTranscript = '';
     for (let i = 0; i < event.results.length; i++) {
-      const item = event.results[i];
-      const chunk = item[0].transcript.trim();
-      if (item.isFinal) {
-        finalPart += (finalPart ? ' ' : '') + chunk;
-      } else {
-        interimPart += (interimPart ? ' ' : '') + chunk;
+      const chunk = (event.results[i][0].transcript || '').trim();
+      if (chunk) {
+        fullTranscript += (fullTranscript ? ' ' : '') + chunk;
       }
     }
 
-    deskSessionTranscript = finalPart || interimPart;
+    deskSessionTranscript = fullTranscript;
 
     const chatInput = document.getElementById('chatInput');
     const coreStateText = document.getElementById('coreStateText');
@@ -608,12 +624,20 @@ function initSpeechRecognition() {
       if (chatInput) chatInput.placeholder = '🎙️ Hearing: "' + hearingText + '"...';
     }
 
-    // Debounce: Wait 650ms of silence so complete commands execute reliably
+    // Smart Debounce: Wait for complete command
+    const cleanedCheck = removeSpeechStutter(deskSessionTranscript)
+      .replace(/^(?:hey\s+)?(?:laddu|jarvis)[,\s]*/i, '')
+      .trim()
+      .toLowerCase();
+    
+    const isIncompleteStarter = /^(?:call|dial|phone|ring|open|launch|start|visit|generate|create|draw|make|paint|use|search|find|show|what\s+is|who\s+is|how\s+to|tell\s+me)$/i.test(cleanedCheck);
+    const debounceWait = isIncompleteStarter ? 1800 : 1000;
+
     if (deskSpeechDebounceTimer) clearTimeout(deskSpeechDebounceTimer);
     if (deskSessionTranscript.trim()) {
       deskSpeechDebounceTimer = setTimeout(() => {
         dispatchDeskAccumulatedSpeech();
-      }, 650);
+      }, debounceWait);
     }
   };
 

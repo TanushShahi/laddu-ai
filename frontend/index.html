@@ -137,6 +137,9 @@
       <button class="nav-btn" data-tab="tab-chat" onclick="switchTab('tab-chat')">
         <span class="nav-icon">💬</span> CHAT & VOICE
       </button>
+      <button class="nav-btn" onclick="openDesktopAIToolsModal()" style="color:var(--neon-cyan);border-left:3px solid var(--neon-cyan);background:rgba(0,240,255,0.06);" title="Open Multi-AI Super Tools Hub">
+        <span class="nav-icon">⚡</span> MULTI-AI TOOLS
+      </button>
       <button class="nav-btn" data-tab="tab-companion" onclick="switchTab('tab-companion')">
         <span class="nav-icon">✨</span> DAILY & HEALTH
       </button>
@@ -570,7 +573,7 @@
 
   
   <!-- AI Tools Hub Modal -->
-  <div class="hud-modal" id="modalDesktopAITools" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);z-index:1000;align-items:center;justify-content:center;padding:16px;">
+  <div class="hud-modal" id="modalDesktopAITools" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);z-index:2000;align-items:center;justify-content:center;padding:16px;">
     <div class="modal-box glass-panel" style="max-width:560px;width:100%;max-height:85vh;overflow-y:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <h3 class="modal-title" style="margin:0;font-size:15px;color:var(--neon-cyan);">⚡ MULTI-AI SUPER TOOLS HUB</h3>
@@ -723,6 +726,28 @@
   </script>
 
   <script>
+    
+    window.openDesktopToolPrompt = function(toolName, baseUrl) {
+      const m = document.getElementById('modalDesktopAITools');
+      if (m) m.style.display = 'none';
+      const query = prompt('Enter topic to research with ' + toolName + ':');
+      if (query) {
+        window.open(baseUrl + encodeURIComponent(query), '_blank');
+      }
+    };
+    window.promptDesktopGenerateImage = function() {
+      const m = document.getElementById('modalDesktopAITools');
+      if (m) m.style.display = 'none';
+      const promptText = prompt('Describe the image you want LADDU to generate:');
+      if (promptText) {
+        const chatInput = document.getElementById('chatInput');
+        if (chatInput) {
+          chatInput.value = 'generate image of ' + promptText;
+          if (typeof sendChat === 'function') sendChat();
+        }
+      }
+    };
+
     window.openDesktopAIToolsModal = function() {
       const m = document.getElementById('modalDesktopAITools');
       if (m) m.style.display = 'flex';

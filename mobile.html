@@ -226,7 +226,10 @@
     <!-- Mobile Conversation Feed -->
     <div class="glass-panel" style="flex:1;min-height:350px;display:flex;flex-direction:column;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <h3 class="panel-header" style="font-size:13px;margin:0;">CONVERSATION FEED</h3>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <h3 class="panel-header" style="font-size:13px;margin:0;">CONVERSATION FEED</h3>
+          <button onclick="openAIToolsModal()" class="action-btn glow-btn" style="padding:2px 8px;font-size:10px;color:var(--neon-cyan);border:1px solid var(--border-cyan);cursor:pointer;" title="Open Multi-AI Hub">⚡ AI TOOLS</button>
+        </div>
         <span id="mActiveRoleBadge" style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(0,240,255,0.15);color:var(--neon-cyan);border:1px solid rgba(0,240,255,0.3);">
           ⚡ ASSISTANT
         </span>
@@ -259,6 +262,10 @@
     <div class="m-nav-item active" onclick="location.href='./mobile.html'">
       <span class="m-icon">💬</span>
       <span>VOICE/CHAT</span>
+    </div>
+    <div class="m-nav-item" onclick="openAIToolsModal()" style="color:var(--neon-cyan);">
+      <span class="m-icon">⚡</span>
+      <span>AI TOOLS</span>
     </div>
     <div class="m-nav-item" onclick="openContactsModal()">
       <span class="m-icon">📞</span>
@@ -373,7 +380,7 @@
   </div>
 
   <!-- AI Tools Hub Modal (Mobile) -->
-  <div class="hud-modal" id="modalAITools" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);backdrop-filter:blur(10px);z-index:200;align-items:center;justify-content:center;padding:16px;">
+  <div class="hud-modal" id="modalAITools" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);backdrop-filter:blur(10px);z-index:1000;align-items:center;justify-content:center;padding:16px;">
     <div class="glass-panel" style="width:100%;max-width:380px;padding:18px;border:1px solid var(--border-cyan);border-radius:10px;max-height:85vh;overflow-y:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <h3 style="font-family:var(--font-hud);font-size:14px;color:var(--neon-cyan);margin:0;">⚡ MULTI-AI SUPER TOOLS</h3>
@@ -1706,20 +1713,16 @@
       recognition.onresult = (e) => {
         if (isSpeakingAudio) return;
 
-        let finalPart = '';
-        let interimPart = '';
-
-        // Reconstruct from e.results cumulative array (do NOT accumulate blindly into external string)
-        for (let i = 0; i < e.results.length; ++i) {
-          const chunk = e.results[i][0].transcript.trim();
-          if (e.results[i].isFinal) {
-            finalPart += (finalPart ? ' ' : '') + chunk;
-          } else {
-            interimPart += (interimPart ? ' ' : '') + chunk;
+        // Build complete utterance by joining all continuous result chunks (both final and interim)
+        let fullTranscript = '';
+        for (let i = 0; i < e.results.length; i++) {
+          const chunk = (e.results[i][0].transcript || '').trim();
+          if (chunk) {
+            fullTranscript += (fullTranscript ? ' ' : '') + chunk;
           }
         }
 
-        sessionTranscript = finalPart || interimPart;
+        sessionTranscript = fullTranscript;
 
         const displayText = normalizeSpokenAliases(removeSpeechStutter(sessionTranscript));
         if (displayText) {
@@ -1727,12 +1730,20 @@
           mInput.placeholder = displayText;
         }
 
-        // Wait 650ms after user pauses speaking before dispatching
+        // Smart Debounce: Wait for complete thought
+        const cleanedCheck = removeSpeechStutter(sessionTranscript)
+          .replace(/^(?:hey\s+)?(?:laddu|jarvis)[,\s]*/i, '')
+          .trim()
+          .toLowerCase();
+        
+        const isIncompleteStarter = /^(?:call|dial|phone|ring|open|launch|start|visit|generate|create|draw|make|paint|use|search|find|show|what\s+is|who\s+is|how\s+to|tell\s+me)$/i.test(cleanedCheck);
+        const debounceWait = isIncompleteStarter ? 1800 : 1000;
+
         if (speechDebounceTimer) clearTimeout(speechDebounceTimer);
         if (sessionTranscript.trim()) {
           speechDebounceTimer = setTimeout(() => {
             dispatchAccumulatedSpeech();
-          }, 650);
+          }, debounceWait);
         }
       };
 
@@ -1740,11 +1751,22 @@
         isRecognizing = false;
         mBtnVoice.classList.remove('active');
         mBtnVoice.innerHTML = '<span class="btn-icon">🎙</span> PUSH TO COMMUNICATE';
-        if (speechDebounceTimer) {
-          clearTimeout(speechDebounceTimer);
-          speechDebounceTimer = null;
+        
+        // If an incomplete starter was heard mid-sentence, restart recognition to allow the user to finish
+        const cleanedCheck = removeSpeechStutter(sessionTranscript)
+          .replace(/^(?:hey\s+)?(?:laddu|jarvis)[,\s]*/i, '')
+          .trim()
+          .toLowerCase();
+        const isIncompleteStarter = /^(?:call|dial|phone|ring|open|launch|start|visit|generate|create|draw|make|paint|use|search|find|show)$/i.test(cleanedCheck);
+
+        if ((siriModeActive || speechDebounceTimer) && isIncompleteStarter) {
+          console.log('[LADDU Voice] Incomplete command starter heard ("' + cleanedCheck + '"). Continuing listen stream...');
+          try { recognition.start(); return; } catch(e){}
         }
-        if (sessionTranscript && sessionTranscript.trim()) {
+
+        if (speechDebounceTimer) {
+          // Let the debounce timer finish its natural silence window
+        } else if (sessionTranscript && sessionTranscript.trim() && !isIncompleteStarter) {
           dispatchAccumulatedSpeech();
         }
         if (siriModeActive && !isSpeakingAudio) {
