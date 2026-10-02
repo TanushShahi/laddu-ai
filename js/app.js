@@ -1,3 +1,17 @@
+window.switchTab = function(tabId) {
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    if (b.dataset.tab === tabId) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+  document.querySelectorAll('.hud-tab').forEach(t => {
+    if (t.id === tabId) t.classList.add('active');
+    else t.classList.remove('active');
+  });
+  if (tabId === 'tab-knowledge' && typeof loadIndexedDocuments === 'function') loadIndexedDocuments();
+  if (tabId === 'tab-memory' && typeof loadMemories === 'function') loadMemories();
+  if (tabId === 'tab-permissions' && typeof loadPermissions === 'function') loadPermissions();
+  if (tabId === 'tab-automations' && typeof loadAutomations === 'function') loadAutomations();
+};
 /**
  * LADDU HUD Frontend Controller, Voice Biometrics, & Daily Companion
  */
@@ -86,6 +100,30 @@ function openWhatsAppWithFallback(phone = '', text = '') {
   }, 1200);
 }
 window.openWhatsAppWithFallback = openWhatsAppWithFallback;
+window.openDesktopContactsModal = function() {
+  const m = document.getElementById('modalDesktopContacts');
+  if (m) { m.style.display = 'flex'; loadDesktopContacts(); }
+};
+window.closeDesktopContactsModal = function() {
+  const m = document.getElementById('modalDesktopContacts');
+  if (m) m.style.display = 'none';
+};
+window.openDesktopSettingsModal = function() {
+  const m = document.getElementById('modalDesktopSettings');
+  if (m) { m.style.display = 'flex'; loadDesktopSettings(); }
+};
+window.closeDesktopSettingsModal = function() {
+  const m = document.getElementById('modalDesktopSettings');
+  if (m) m.style.display = 'none';
+};
+window.openDesktopAIToolsModal = function() {
+  const m = document.getElementById('modalDesktopAITools');
+  if (m) m.style.display = 'flex';
+};
+window.closeDesktopAIToolsModal = function() {
+  const m = document.getElementById('modalDesktopAITools');
+  if (m) m.style.display = 'none';
+};
 
 function initWebSocket() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -156,7 +194,10 @@ function handleServerMessage(msg) {
         if (msg.payload.telUri || msg.payload.action === 'CALL_PHONE') {
           triggerDesktopCall(msg.payload);
         }
-        if (msg.payload.url) {
+        if (msg.payload.action === 'OPEN_WHATSAPP') {
+          openWhatsAppWithFallback();
+        }
+        if (msg.payload.url && msg.payload.action !== 'OPEN_WHATSAPP') {
           try { window.open(msg.payload.url, '_blank'); } catch (e) { console.warn(e); }
         }
       }
@@ -491,7 +532,7 @@ function initSpeechRecognition() {
 
     const features = extractAcousticFeatures();
 
-    // 1. Try WebSocket
+        // 1. Try WebSocket
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         type: 'VOICE_TRANSCRIPT',
@@ -499,6 +540,7 @@ function initSpeechRecognition() {
       }));
     } else {
       // 2. HTTP Fallback
+      let data = null;
       try {
         const res = await fetch('/api/chat', {
           method: 'POST',
@@ -510,18 +552,31 @@ function initSpeechRecognition() {
             webSearch: isWebSearchActive
           })
         });
-        const data = await res.json();
-        if (data.role) updateRolePill(data.role, false);
-        appendChatMessage('assistant', data.content, data.citations || [], data.role, data);
-        speakBrowser({ text: data.content, rate: data.role?.voiceSettings?.rate, pitch: data.role?.voiceSettings?.pitch, telUri: data.telUri, url: data.url });
-      } catch (err) {
-        // 3. Standalone Client Engine Fallback
-        const autonomousRes = await processDesktopAutonomous(cleanedFinal);
-        appendChatMessage('assistant', autonomousRes.content, autonomousRes.citations || [], autonomousRes.role, autonomousRes);
-        speakBrowser({ text: autonomousRes.content });
-      } finally {
-        setAIActivityState('IDLE');
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch (err) {}
+
+      // 3. Standalone Client Engine Fallback (GitHub Pages / Offline)
+      if (!data) {
+        data = await processDesktopAutonomous(cleanedFinal);
       }
+
+      if (data.role) updateRolePill(data.role, false);
+      appendChatMessage('assistant', data.content, data.citations || [], data.role, data);
+      speakBrowser({ text: data.content, rate: data.role?.voiceSettings?.rate, pitch: data.role?.voiceSettings?.pitch, telUri: data.telUri, url: data.url });
+
+      // Execute Direct System Actions on Desktop
+      if (data.telUri || data.action === 'CALL_PHONE') {
+        triggerDesktopCall(data);
+      }
+      if (data.action === 'OPEN_WHATSAPP') {
+        openWhatsAppWithFallback();
+      }
+      if (data.url && data.action !== 'OPEN_WHATSAPP') {
+        try { window.open(data.url, '_blank'); } catch (e) { window.location.href = data.url; }
+      }
+      setAIActivityState('IDLE');
     }
   }
 
@@ -902,7 +957,7 @@ async function sendChat() {
         // Instant Client Interceptors (Image Gen, Multi-AI Tools, WhatsApp)
     const cleanLower = text.toLowerCase().trim();
 
-    const imgMatch = cleanLower.match(/^(?:generate|create|draw|make|paint)\s+(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of\s+)?(.+)$/i) || cleanLower.match(/^(?:draw|paint)\s+(.+)$/i);
+    const imgMatch = cleanLower.match(/(?:generate|create|draw|make|paint)?\s*(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of|for|about|on)?\s*(.+)/i) || cleanLower.match(/^(?:draw|paint)\s+(.+)$/i);
     if (imgMatch) {
       const rawPrompt = imgMatch[1].trim();
       const cleanPrompt = rawPrompt.replace(/^(?:me\s+)?(?:an?\s+)?/i, '').trim();
@@ -1242,6 +1297,7 @@ async function processDesktopAutonomous(rawText, currentAttachments = []) {
   }
 
   // 2. Open Web Service / App (Native WhatsApp First)
+  const openMatch = cleanLower.match(/^(?:open|launch|start|go\s+to|navigate\s+to|visit)\s+(.+)$/i);
   if (openMatch) {
     const target = openMatch[1].trim().toLowerCase();
     if (target === 'whatsapp' || target === 'whats app') {
@@ -1361,7 +1417,10 @@ async function processDesktopAutonomous(rawText, currentAttachments = []) {
     };
   }
 
-  // 3. Multi-Key Gemini Cloud API Pool with Auto-Failover
+  const hasDocs = currentAttachments.some(a => a.type === 'document' || a.extractedText || a.text);
+  const hasImgs = currentAttachments.some(a => a.type === 'image' || (a.mimeType && a.mimeType.startsWith('image/')));
+
+  // 3. Multi-Key Gemini Cloud API Pool with Auto-Failover (handles multimodal docs & images)
   const geminiRes = await GeminiKeyPool.generate(text, currentAttachments);
   if (geminiRes) {
     return {
@@ -1369,6 +1428,43 @@ async function processDesktopAutonomous(rawText, currentAttachments = []) {
       citations: geminiRes.citations,
       role: { id: 'friend', name: 'Close Friend', icon: '🧡' },
       model: geminiRes.model + ' [Key #' + geminiRes.keyIndex + '/' + geminiRes.totalKeys + ']'
+    };
+  }
+
+  // Standalone Document & Image Summarizer (when offline or no Gemini key)
+  if (hasDocs && (/(?:explain|summarize|summary|overview|short|tell\s+me|read|what\s+is\s+in|describe)/i.test(cleanLower) || !text || text === 'Summarize this document.')) {
+    const doc = currentAttachments.find(a => a.type === 'document' || a.extractedText || a.text) || currentAttachments[0];
+    const docName = doc.filename || 'Document';
+    const docText = (doc.extractedText || doc.text || '').trim();
+    const wordCount = docText ? docText.split(/\s+/).length : 0;
+    const lineCount = docText ? docText.split(/\n+/).length : 0;
+    
+    const sentences = docText.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 15).slice(0, 5);
+    const bulletPoints = sentences.length > 0 
+      ? sentences.map(s => `* **Key Point**: ${s.trim()}`).join('\n')
+      : `* Content successfully indexed (${wordCount} words, ${lineCount} lines).`;
+
+    return {
+      content: `### 📄 Short Document Summary: ${docName}\n\n` +
+               `* **Length**: ${wordCount} words across ${lineCount} lines\n` +
+               `* **Key Highlights**:\n${bulletPoints}\n\n` +
+               `*💡 Tip: Add free Gemini API key in **Settings (⚙️)** for deep neural document reasoning!*`,
+      role: { id: 'mentor', name: 'Document Intelligence', icon: '📄' },
+      model: 'standalone-doc-summarizer'
+    };
+  }
+
+  if (hasImgs && (/(?:explain|summarize|describe|what\s+is|what\s+do\s+you\s+see|analyze|look\s+at)/i.test(cleanLower) || !text || text === 'Analyze this image')) {
+    const img = currentAttachments.find(a => a.type === 'image') || currentAttachments[0];
+    const imgName = img.filename || 'Image';
+    return {
+      content: `### 🖼️ Image Analysis: ${imgName}\n\n` +
+               `* **Status**: Image received and inspected in LADDU High-Resolution Canvas.\n` +
+               `* **Format**: ${img.mimeType || 'image/jpeg'}\n` +
+               `* **Ready**: Image is loaded and ready for multimodal processing.\n\n` +
+               `*💡 Tip: For live AI computer-vision analysis, enter your free Google Gemini key in **Settings (⚙️)**!*`,
+      role: { id: 'assistant', name: 'Vision Engine', icon: '👁️' },
+      model: 'standalone-vision-inspector'
     };
   }
 
@@ -1507,36 +1603,64 @@ function initMultimodalAttachments() {
 }
 
 async function processAndUploadFile(file) {
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const base64Data = e.target.result;
-    try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: file.name,
-          mimeType: file.type || 'application/octet-stream',
-          data: base64Data
-        })
-      });
+  const isImg = (file.type || '').startsWith('image/');
+  const isText = (file.type || '').startsWith('text/') || /\.(txt|csv|json|md|py|js|html|xml|log)$/i.test(file.name);
+
+  const readFileData = (asDataUrl = true) => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = () => resolve('');
+    if (asDataUrl) reader.readAsDataURL(file);
+    else reader.readAsText(file);
+  });
+
+  const base64Data = await readFileData(true);
+  let extractedText = '';
+  if (isText) {
+    extractedText = await readFileData(false);
+  }
+
+  let uploaded = false;
+  try {
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        data: base64Data
+      })
+    });
+    if (res.ok) {
       const data = await res.json();
       if (data.success) {
         attachedFiles.push({
-          type: data.type,
-          filename: data.filename,
+          type: data.type || (isImg ? 'image' : 'document'),
+          filename: data.filename || file.name,
           mimeType: data.mimeType || file.type,
           data: data.data || base64Data,
-          preview: data.preview || (data.type === 'image' ? base64Data : null),
-          extractedText: data.extractedText || ''
+          preview: data.preview || (isImg ? base64Data : null),
+          extractedText: data.extractedText || extractedText
         });
-        renderAttachmentPreviewBar();
+        uploaded = true;
       }
-    } catch (err) {
-      console.warn('File upload failed:', err);
     }
-  };
-  reader.readAsDataURL(file);
+  } catch (err) {
+    console.warn('Server upload unavailable, attaching in client memory:', err);
+  }
+
+  if (!uploaded) {
+    attachedFiles.push({
+      type: isImg ? 'image' : 'document',
+      filename: file.name,
+      mimeType: file.type || (isImg ? 'image/jpeg' : 'application/octet-stream'),
+      data: base64Data,
+      preview: isImg ? base64Data : null,
+      extractedText: extractedText || (isImg ? '' : `[File: ${file.name}, Size: ${(file.size / 1024).toFixed(1)} KB]`)
+    });
+  }
+
+  renderAttachmentPreviewBar();
 }
 
 function renderAttachmentPreviewBar() {
@@ -2693,9 +2817,15 @@ function initDesktopContactsAndSettings() {
   }
 }
 
-// Call on startup
-window.addEventListener('load', () => {
+// Call on startup immediately
+function initDesktopApp() {
   initLanguageSelector();
   initMultimodalAttachments();
   initDesktopContactsAndSettings();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDesktopApp);
+} else {
+  initDesktopApp();
+}

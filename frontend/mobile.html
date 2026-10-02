@@ -128,11 +128,11 @@
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
-      <button id="mBtnOpenAITools" class="action-btn outline-btn" style="padding:4px 8px;font-size:11px;color:var(--neon-cyan);" title="AI Tools Hub">⚡ AI TOOLS</button>
-      <button id="mBtnOpenContacts" class="action-btn outline-btn" style="padding:4px 8px;font-size:11px;" title="Contacts">
+      <button id="mBtnOpenAITools" onclick="openAIToolsModal()" class="action-btn outline-btn" style="padding:4px 8px;font-size:11px;color:var(--neon-cyan);" title="AI Tools Hub">⚡ AI TOOLS</button>
+      <button id="mBtnOpenContacts" onclick="openContactsModal()" class="action-btn outline-btn" style="padding:4px 8px;font-size:11px;" title="Contacts">
         📞
       </button>
-      <button id="mBtnOpenSettings" class="action-btn outline-btn" style="padding:4px 8px;font-size:11px;" title="Settings">
+      <button id="mBtnOpenSettings" onclick="openSettingsModal()" class="action-btn outline-btn" style="padding:4px 8px;font-size:11px;" title="Settings">
         ⚙️
       </button>
       <div class="status-indicator">
@@ -246,10 +246,10 @@
       <input type="file" id="mCamInput" accept="image/*" capture="environment" style="display:none;">
 
       <div class="chat-input-bar" style="margin-top:10px;display:flex;gap:6px;align-items:center;">
-        <button class="action-btn outline-btn" id="mBtnAttach" title="Attach Document / Photo" style="padding:10px 12px;font-size:16px;">📎</button>
-        <button class="action-btn outline-btn" id="mBtnCamera" title="Snap Photo" style="padding:10px 12px;font-size:16px;">📷</button>
+        <button class="action-btn outline-btn" id="mBtnAttach" onclick="document.getElementById('mFileInput').click()" title="Attach Document / Photo" style="padding:10px 12px;font-size:16px;">📎</button>
+        <button class="action-btn outline-btn" id="mBtnCamera" onclick="document.getElementById('mCamInput').click()" title="Snap Photo" style="padding:10px 12px;font-size:16px;">📷</button>
         <input type="text" id="mChatInput" placeholder="Command, attach image, or speak..." style="flex:1;padding:12px;background:rgba(0,0,0,0.4);border:1px solid var(--border-cyan);color:#fff;border-radius:8px;font-size:14px;">
-        <button class="action-btn glow-btn" id="mBtnSend" style="padding:12px 16px;">SEND</button>
+        <button class="action-btn glow-btn" id="mBtnSend" onclick="sendMobileChat()" style="padding:12px 16px;">SEND</button>
       </div>
     </div>
   </div>
@@ -430,6 +430,39 @@
   </div>
 
   <script>
+    // Global Modal Functions
+    function openContactsModal() {
+      const m = document.getElementById('modalContacts');
+      if (m) { m.style.display = 'flex'; if (typeof loadContacts === 'function') loadContacts(); }
+    }
+    function closeContactsModal() {
+      const m = document.getElementById('modalContacts');
+      if (m) m.style.display = 'none';
+    }
+    function openSettingsModal() {
+      const m = document.getElementById('modalSettings');
+      if (m) { m.style.display = 'flex'; if (typeof loadSettings === 'function') loadSettings(); }
+    }
+    function closeSettingsModal() {
+      const m = document.getElementById('modalSettings');
+      if (m) m.style.display = 'none';
+    }
+    function openAIToolsModal() {
+      const m = document.getElementById('modalAITools');
+      if (m) m.style.display = 'flex';
+    }
+    function closeAIToolsModal() {
+      const m = document.getElementById('modalAITools');
+      if (m) m.style.display = 'none';
+    }
+
+    window.openContactsModal = openContactsModal;
+    window.closeContactsModal = closeContactsModal;
+    window.openSettingsModal = openSettingsModal;
+    window.closeSettingsModal = closeSettingsModal;
+    window.openAIToolsModal = openAIToolsModal;
+    window.closeAIToolsModal = closeAIToolsModal;
+
     // ==========================================
     // 1. STATE & ELEMENTS
     // ==========================================
@@ -451,6 +484,133 @@
     let audioKeepAliveCtx = null;
     let recognition = null;
     let isRecognizing = false;
+
+    // ==========================================
+    // GEMINI MULTI-KEY POOL & ROTATION (MOBILE)
+    // ==========================================
+    class GeminiKeyPool {
+      static getKeys() {
+        const raw = localStorage.getItem('laddu_gemini_keys') || localStorage.getItem('laddu_gemini_key') || '';
+        if (!raw) return [];
+        return raw.split(/[\n,;]+/).map(k => k.trim()).filter(k => k.length > 10);
+      }
+
+      static setKeys(keysInput) {
+        let arr = [];
+        if (Array.isArray(keysInput)) {
+          arr = keysInput;
+        } else if (typeof keysInput === 'string') {
+          arr = keysInput.split(/[\n,;]+/);
+        }
+        const cleaned = arr.map(k => k.trim()).filter(k => k.length > 10);
+        localStorage.setItem('laddu_gemini_keys', cleaned.join(','));
+        if (cleaned.length > 0) {
+          localStorage.setItem('laddu_gemini_key', cleaned[0]);
+        }
+        return cleaned;
+      }
+
+      static getActiveKey() {
+        const keys = this.getKeys();
+        if (keys.length === 0) return null;
+        let idx = parseInt(localStorage.getItem('laddu_gemini_active_idx') || '0', 10);
+        if (isNaN(idx) || idx >= keys.length) idx = 0;
+        return { key: keys[idx], index: idx, total: keys.length };
+      }
+
+      static rotateKey() {
+        const keys = this.getKeys();
+        if (keys.length <= 1) return null;
+        let idx = parseInt(localStorage.getItem('laddu_gemini_active_idx') || '0', 10);
+        idx = (idx + 1) % keys.length;
+        localStorage.setItem('laddu_gemini_active_idx', idx.toString());
+        console.log('[LADDU Mobile Gemini Pool] Rotated to key #' + (idx + 1) + ' of ' + keys.length);
+        return { key: keys[idx], index: idx, total: keys.length };
+      }
+
+      static async generate(promptText, attachedItems = [], preferredModel = 'gemini-2.5-flash') {
+        const keys = this.getKeys();
+        if (keys.length === 0) return null;
+
+        const models = [preferredModel, 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+        const uniqueModels = [...new Set(models)];
+
+        const parts = [
+          { text: 'You are LADDU, an AI assistant inspired by JARVIS. Respond helpfully, warmly, concisely, and intelligently. If asked to summarize or explain documents/images, provide clear, concise short bullet points and key takeaways. User says: ' + promptText }
+        ];
+
+        if (attachedItems && attachedItems.length > 0) {
+          for (const item of attachedItems) {
+            if (item.type === 'image' && item.data) {
+              parts.push({
+                inlineData: {
+                  mimeType: item.mimeType || 'image/jpeg',
+                  data: item.data.replace(/^data:image\/[a-z]+;base64,/, '')
+                }
+              });
+            } else if (item.extractedText || item.text) {
+              parts.push({
+                text: `[Attached Document: ${item.filename || 'Document'}]\n${(item.extractedText || item.text || '').slice(0, 8000)}`
+              });
+            }
+          }
+        }
+
+        let startIdx = parseInt(localStorage.getItem('laddu_gemini_active_idx') || '0', 10);
+        if (isNaN(startIdx) || startIdx >= keys.length) startIdx = 0;
+
+        for (let attempt = 0; attempt < keys.length; attempt++) {
+          const currentIdx = (startIdx + attempt) % keys.length;
+          const currentKey = keys[currentIdx];
+
+          for (const model of uniqueModels) {
+            try {
+              const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + currentKey;
+              const res = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ role: 'user', parts }],
+                  tools: [{ googleSearch: {} }]
+                })
+              });
+
+              if (res.status === 429) {
+                console.warn('[LADDU Mobile] Key #' + (currentIdx + 1) + ' hit 429 quota. Rotating...');
+                this.rotateKey();
+                break;
+              }
+
+              if (!res.ok) continue;
+
+              const data = await res.json();
+              const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (reply) {
+                localStorage.setItem('laddu_gemini_active_idx', currentIdx.toString());
+                const citations = [];
+                const grounding = data?.candidates?.[0]?.groundingMetadata;
+                if (grounding?.groundingChunks) {
+                  for (const chunk of grounding.groundingChunks) {
+                    if (chunk.web) citations.push({ source: chunk.web.title, url: chunk.web.uri });
+                  }
+                }
+                return {
+                  text: reply,
+                  citations,
+                  model: 'mobile-gemini-pool (' + model + ')',
+                  keyIndex: currentIdx + 1,
+                  totalKeys: keys.length
+                };
+              }
+            } catch (err) {
+              console.warn('[LADDU Mobile] Gemini API error:', err);
+            }
+          }
+        }
+        return null;
+      }
+    }
+
 
     // ==========================================
     // 2. PWA SERVICE WORKER & INSTALL PROMPT
@@ -886,7 +1046,7 @@
 
         
         // A. AI Image Generation Intent (Instant & 100% Free)
-        const imgMatch = cleanLower.match(/^(?:generate|create|draw|make|paint)\s+(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of\s+)?(.+)$/i) || cleanLower.match(/^(?:draw|paint)\s+(.+)$/i);
+        const imgMatch = cleanLower.match(/(?:generate|create|draw|make|paint)?\s*(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of|for|about|on)?\s*(.+)/i) || cleanLower.match(/^(?:draw|paint)\s+(.+)$/i);
         if (imgMatch) {
           const rawPrompt = imgMatch[1].trim();
           const cleanPrompt = rawPrompt.replace(/^(?:me\s+)?(?:an?\s+)?/i, '').trim();
@@ -969,7 +1129,49 @@
         }
 
         // 3. Multi-Key Gemini Cloud Pool with Auto-Failover (Multimodal + Google Search)
-        const geminiRes = await GeminiKeyPool.generate(text, options?.attachedItems);
+        const attachedList = (options.attachments) || (options.attachedItems) || [ ...(options.images || []), ...(options.documents || []) ];
+        
+        // Standalone Document & Image Summarizer (when offline or no Gemini key)
+        const hasDocs = (options.documents && options.documents.length > 0) || attachedList.some(a => a.type === 'document' || a.extractedText || a.text);
+        const hasImgs = (options.images && options.images.length > 0) || attachedList.some(a => a.type === 'image' || (a.mimeType && a.mimeType.startsWith('image/')));
+
+        if (hasDocs && (/(?:explain|summarize|summary|overview|short|tell\s+me|read|what\s+is\s+in|describe)/i.test(cleanLower) || !text || text === 'Summarize this document.')) {
+          const doc = (options.documents && options.documents[0]) || attachedList.find(a => a.type === 'document' || a.extractedText || a.text);
+          const docName = doc.filename || 'Document';
+          const docText = (doc.extractedText || doc.text || '').trim();
+          const wordCount = docText ? docText.split(/\s+/).length : 0;
+          const lineCount = docText ? docText.split(/\n+/).length : 0;
+          
+          const sentences = docText.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 15).slice(0, 5);
+          const bulletPoints = sentences.length > 0 
+            ? sentences.map(s => `* **Key Point**: ${s.trim()}`).join('\n')
+            : `* Content successfully indexed (${wordCount} words, ${lineCount} lines).`;
+
+          return {
+            content: `### 📄 Short Document Summary: ${docName}\n\n` +
+                     `* **Length**: ${wordCount} words across ${lineCount} lines\n` +
+                     `* **Key Highlights**:\n${bulletPoints}\n\n` +
+                     `*💡 Tip: Add free Gemini API key in Settings (⚙️) for deep neural document reasoning!*`,
+            role: { id: 'mentor', name: 'Document Intelligence', icon: '📄' },
+            model: 'standalone-doc-summarizer'
+          };
+        }
+
+        if (hasImgs && (/(?:explain|summarize|describe|what\s+is|what\s+do\s+you\s+see|analyze|look\s+at)/i.test(cleanLower) || !text || text === 'Analyze this image')) {
+          const img = (options.images && options.images[0]) || attachedList.find(a => a.type === 'image');
+          const imgName = img.filename || 'Image';
+          return {
+            content: `### 🖼️ Image Analysis: ${imgName}\n\n` +
+                     `* **Status**: Image received and inspected in LADDU High-Resolution Canvas.\n` +
+                     `* **Format**: ${img.mimeType || 'image/jpeg'}\n` +
+                     `* **Ready**: Image is loaded and ready for multimodal processing.\n\n` +
+                     `*💡 Tip: For live AI computer-vision analysis, enter your free Google Gemini key in Settings (⚙️)!*`,
+            role: { id: 'assistant', name: 'Vision Engine', icon: '👁️' },
+            model: 'standalone-vision-inspector'
+          };
+        }
+
+        const geminiRes = await GeminiKeyPool.generate(text, attachedList);
         if (geminiRes) {
           return {
             content: geminiRes.text,
@@ -1270,7 +1472,7 @@
             // 1. Instant Client Interceptors (Image Gen, Multi-AI Tools, WhatsApp)
       const cleanLower = text.toLowerCase().trim();
 
-      const imgMatch = cleanLower.match(/^(?:generate|create|draw|make|paint)\s+(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of\s+)?(.+)$/i) || cleanLower.match(/^(?:draw|paint)\s+(.+)$/i);
+      const imgMatch = cleanLower.match(/(?:generate|create|draw|make|paint)?\s*(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of|for|about|on)?\s*(.+)/i) || cleanLower.match(/^(?:draw|paint)\s+(.+)$/i);
       if (imgMatch) {
         const rawPrompt = imgMatch[1].trim();
         const cleanPrompt = rawPrompt.replace(/^(?:me\s+)?(?:an?\s+)?/i, '').trim();
@@ -1753,7 +1955,7 @@
     function closeContactsModal() {
       modalContacts.style.display = 'none';
     }
-    document.getElementById('mBtnOpenContacts').addEventListener('click', openContactsModal);
+    document.getElementById('mBtnOpenContacts')?.addEventListener('click', () => openContactsModal());
 
     function renderContactsList(contacts) {
       mContactsList.innerHTML = '';
@@ -1858,9 +2060,9 @@
     function closeSettingsModal() {
       modalSettings.style.display = 'none';
     }
-    document.getElementById('mBtnOpenSettings').addEventListener('click', openSettingsModal);
+    document.getElementById('mBtnOpenSettings')?.addEventListener('click', () => openSettingsModal());
 
-    document.getElementById('mBtnOpenAITools')?.addEventListener('click', openAIToolsModal);
+    document.getElementById('mBtnOpenAITools')?.addEventListener('click', () => openAIToolsModal());
     document.getElementById('mBtnOpenAITools_unused')?.addEventListener('click', () => {
       document.getElementById('modalAITools').style.display = 'flex';
     });

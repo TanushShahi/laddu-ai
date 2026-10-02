@@ -114,13 +114,13 @@
       </button>
 
       <!-- Contacts Button -->
-      <button class="device-sync-btn" id="deskBtnOpenAITools" title="Multi-AI Tools Hub" style="border-color:var(--neon-cyan);color:var(--neon-cyan);">⚡ AI TOOLS</button>
-      <button class="device-sync-btn" id="btnOpenDesktopContacts" title="Contacts & Speed Dial" style="border-color:var(--neon-green);color:var(--neon-green);">
+      <button class="device-sync-btn" id="deskBtnOpenAITools" onclick="openDesktopAIToolsModal()" title="Multi-AI Tools Hub" style="border-color:var(--neon-cyan);color:var(--neon-cyan);">⚡ AI TOOLS</button>
+      <button class="device-sync-btn" id="btnOpenDesktopContacts" onclick="openDesktopContactsModal()" title="Contacts & Speed Dial" style="border-color:var(--neon-green);color:var(--neon-green);">
         📞 CONTACTS
       </button>
 
       <!-- Settings Button -->
-      <button class="device-sync-btn" id="btnOpenDesktopSettings" title="AI Model & API Keys" style="border-color:var(--neon-amber);color:var(--neon-amber);">
+      <button class="device-sync-btn" id="btnOpenDesktopSettings" onclick="openDesktopSettingsModal()" title="AI Model & API Keys" style="border-color:var(--neon-amber);color:var(--neon-amber);">
         ⚙️ SETTINGS
       </button>
 
@@ -141,31 +141,31 @@
   <!-- Main HUD Layout -->
   <div class="hud-container">
     <nav class="hud-sidebar">
-      <button class="nav-btn active" data-tab="tab-home">
+      <button class="nav-btn active" data-tab="tab-home" onclick="switchTab('tab-home')">
         <span class="nav-icon">◈</span> HUD DASHBOARD
       </button>
-      <button class="nav-btn" data-tab="tab-chat">
+      <button class="nav-btn" data-tab="tab-chat" onclick="switchTab('tab-chat')">
         <span class="nav-icon">💬</span> CHAT & VOICE
       </button>
-      <button class="nav-btn" data-tab="tab-companion">
+      <button class="nav-btn" data-tab="tab-companion" onclick="switchTab('tab-companion')">
         <span class="nav-icon">✨</span> DAILY & HEALTH
       </button>
-      <button class="nav-btn" data-tab="tab-research">
+      <button class="nav-btn" data-tab="tab-research" onclick="switchTab('tab-research')">
         <span class="nav-icon">🌐</span> WEB RESEARCH
       </button>
-      <button class="nav-btn" data-tab="tab-knowledge">
+      <button class="nav-btn" data-tab="tab-knowledge" onclick="switchTab('tab-knowledge')">
         <span class="nav-icon">📁</span> KNOWLEDGE & RAG
       </button>
-      <button class="nav-btn" data-tab="tab-memory">
+      <button class="nav-btn" data-tab="tab-memory" onclick="switchTab('tab-memory')">
         <span class="nav-icon">🧠</span> MEMORY MANAGER
       </button>
-      <button class="nav-btn" data-tab="tab-permissions">
+      <button class="nav-btn" data-tab="tab-permissions" onclick="switchTab('tab-permissions')">
         <span class="nav-icon">🛡️</span> PERMISSIONS & SAFETY
       </button>
-      <button class="nav-btn" data-tab="tab-automations">
+      <button class="nav-btn" data-tab="tab-automations" onclick="switchTab('tab-automations')">
         <span class="nav-icon">⚙️</span> AUTOMATIONS
       </button>
-      <button class="nav-btn" data-tab="tab-diagnostics">
+      <button class="nav-btn" data-tab="tab-diagnostics" onclick="switchTab('tab-diagnostics')">
         <span class="nav-icon">🩺</span> DIAGNOSTICS
       </button>
     </nav>
@@ -258,7 +258,7 @@
           <input type="file" id="fileUploadInput" accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx,.xls,.json,.py,.js,.html,.md" style="display:none;" multiple>
 
           <div class="chat-input-bar" id="chatInputArea">
-            <button class="action-btn outline-btn" id="btnAttachFile" title="Attach Image, PDF, DOCX, or Excel file" style="padding:10px 12px;font-size:16px;">📎</button>
+            <button class="action-btn outline-btn" id="btnAttachFile" onclick="document.getElementById('fileUploadInput').click()" title="Attach Image, PDF, DOCX, or Excel file" style="padding:10px 12px;font-size:16px;">📎</button>
             <button class="action-btn outline-btn" id="btnWebSearchToggle" title="Perplexity Mode: Real-Time Google & Web Grounding" style="padding:8px 12px;font-size:11px;font-weight:700;white-space:nowrap;">🌐 WEB: ON</button>
             <input type="text" id="chatInput" placeholder="Command LADDU, ask anything, or drag & drop files..." autocomplete="off">
             <button class="action-btn outline-btn" id="btnChatVoice" title="Toggle Voice Microphone" style="padding:10px 14px;font-size:16px;">🎙️</button>
@@ -323,7 +323,7 @@
           <div class="upload-panel glass-panel">
             <h2 class="panel-header">INGEST DOCUMENTS (LOCAL RAG)</h2>
             <p class="panel-desc">Upload or paste documents into your private offline knowledge base (PDF, DOCX, TXT, CSV, Code).</p>
-            <div class="drop-zone" id="dropZone">
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" style="cursor:pointer;">
               <span class="drop-icon">📄</span>
               <p>Drag and drop documents here or click to select</p>
               <input type="file" id="fileInput" multiple style="display:none">
@@ -730,6 +730,55 @@
       const modal = document.getElementById('modalDesktopAITools');
       if (modal) modal.style.display = 'flex';
     });
+  </script>
+
+  <script>
+    window.openDesktopAIToolsModal = function() {
+      const m = document.getElementById('modalDesktopAITools');
+      if (m) m.style.display = 'flex';
+    };
+    window.closeDesktopAIToolsModal = function() {
+      const m = document.getElementById('modalDesktopAITools');
+      if (m) m.style.display = 'none';
+    };
+    window.openDesktopContactsModal = function() {
+      const m = document.getElementById('modalDesktopContacts');
+      if (m) {
+        m.style.display = 'flex';
+        if (typeof loadDesktopContacts === 'function') loadDesktopContacts();
+      }
+    };
+    window.closeDesktopContactsModal = function() {
+      const m = document.getElementById('modalDesktopContacts');
+      if (m) m.style.display = 'none';
+    };
+    window.openDesktopSettingsModal = function() {
+      const m = document.getElementById('modalDesktopSettings');
+      if (m) {
+        m.style.display = 'flex';
+        if (typeof loadDesktopSettings === 'function') loadDesktopSettings();
+      }
+    };
+    window.closeDesktopSettingsModal = function() {
+      const m = document.getElementById('modalDesktopSettings');
+      if (m) m.style.display = 'none';
+    };
+  </script>
+  <script>
+    window.switchTab = function(tabId) {
+      document.querySelectorAll('.nav-btn').forEach(b => {
+        if (b.dataset.tab === tabId) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+      document.querySelectorAll('.hud-tab').forEach(t => {
+        if (t.id === tabId) t.classList.add('active');
+        else t.classList.remove('active');
+      });
+      if (tabId === 'tab-knowledge' && typeof loadIndexedDocuments === 'function') loadIndexedDocuments();
+      if (tabId === 'tab-memory' && typeof loadMemories === 'function') loadMemories();
+      if (tabId === 'tab-permissions' && typeof loadPermissions === 'function') loadPermissions();
+      if (tabId === 'tab-automations' && typeof loadAutomations === 'function') loadAutomations();
+    };
   </script>
 </body>
 </html>

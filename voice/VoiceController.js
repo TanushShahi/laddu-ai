@@ -51,7 +51,7 @@ export class VoiceController {
     const wakeResult = this.wakeWordDetector.detect(speech.text);
 
     // Direct actionable command check (e.g. "open instagram", "call papa", "dial 987...", "what is ...")
-    const isDirectAction = /^(?:open|launch|start|go\s+to|navigate\s+to|visit|call|phone|dial|ring|calculate|what\s+is|who\s+is|how\s+to|search|play|set|save|show|weather|turn|enable|disable|stop)\b/i.test(speech.text.trim());
+    const isDirectAction = /^(?:open|launch|start|go\s+to|navigate\s+to|visit|call|phone|dial|ring|calculate|what\s+is|who\s+is|how\s+to|search|play|set|save|show|weather|turn|enable|disable|stop|generate|create|draw|make|paint|use|research|summarize|explain)\b/i.test(speech.text.trim());
 
     // If not triggered and not already in forced execution mode and not a direct action, ignore
     if (!wakeResult.isTriggered && !options.forceExecution && !isDirectAction) {
