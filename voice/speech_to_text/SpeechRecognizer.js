@@ -20,13 +20,29 @@ export class SpeechRecognizer {
   }
 
   /**
-   * Cleans and normalizes incoming speech transcript
+   * Cleans and normalizes incoming speech transcript with universal phrase deduplication
    */
   normalizeTranscript(transcript) {
     if (!transcript || typeof transcript !== 'string') return '';
-    return transcript
-      .trim()
-      .replace(/\s+/g, ' ');
+    let str = transcript.trim().replace(/\s+/g, ' ');
+    for (let len = 15; len >= 1; len--) {
+      const pattern = new RegExp('(\\b(?:\\S+\\s+){' + (len - 1) + '}\\S+)(?:\\s+\\1\\b)+', 'gi');
+      str = str.replace(pattern, '$1');
+    }
+    let words = str.split(/\s+/);
+    for (let chunkSize = Math.floor(words.length / 2); chunkSize >= 1; chunkSize--) {
+      let i = 0;
+      while (i + chunkSize * 2 <= words.length) {
+        const c1 = words.slice(i, i + chunkSize).join(' ').toLowerCase();
+        const c2 = words.slice(i + chunkSize, i + chunkSize * 2).join(' ').toLowerCase();
+        if (c1 === c2) {
+          words.splice(i + chunkSize, chunkSize);
+        } else {
+          i++;
+        }
+      }
+    }
+    return words.join(' ').trim();
   }
 
   /**

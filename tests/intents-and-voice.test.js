@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { IntentDispatcher } from '../core/intents/IntentDispatcher.js';
 import { ContactManager } from '../core/contacts/ContactManager.js';
 import { VoiceController } from '../voice/VoiceController.js';
+import { SpeechRecognizer } from '../voice/speech_to_text/SpeechRecognizer.js';
 
 test('IntentDispatcher: "open instagram" launches Instagram website', async () => {
   const dispatcher = new IntentDispatcher();
@@ -107,3 +108,19 @@ test('IntentDispatcher: "open whatsapp", "whatsapp", "launch whatsapp" triggers 
   const res5 = await dispatcher.dispatch('whatsapp web');
   assert.equal(res5.action, 'OPEN_WHATSAPP');
 });
+
+test('SpeechRecognizer: eliminates multi-word repeated phrases (draw a cute dog)', () => {
+  const recognizer = new SpeechRecognizer();
+  const res1 = recognizer.normalizeTranscript('draw a cute dog draw a cute dog draw a cute dog');
+  assert.equal(res1, 'draw a cute dog');
+
+  const res2 = recognizer.normalizeTranscript('open whatsapp open whatsapp');
+  assert.equal(res2, 'open whatsapp');
+
+  const res3 = recognizer.normalizeTranscript('call papa call papa');
+  assert.equal(res3, 'call papa');
+
+  const res4 = recognizer.normalizeTranscript('what is quantum physics what is quantum physics');
+  assert.equal(res4, 'what is quantum physics');
+});
+

@@ -1030,7 +1030,7 @@
 
         let matchAliases = [q];
         for (const [key, list] of Object.entries(aliases)) {
-          if (list.includes(q)) {
+          if (list.some(alias => q.includes(alias))) {
             matchAliases = list;
             break;
           }
@@ -1039,7 +1039,7 @@
         return contacts.find(c => {
           const cName = (c.name || '').toLowerCase();
           const cRel = (c.relationship || '').toLowerCase();
-          return matchAliases.some(alias => cName === alias || cName.includes(alias) || cRel === alias);
+          return matchAliases.some(alias => cName === alias || cName.includes(alias) || cRel === alias || q.includes(cName));
         }) || null;
       },
 
@@ -1555,18 +1555,36 @@
     function removeSpeechStutter(text) {
       if (!text) return '';
       let str = text.trim();
-      // 1. Collapse immediate repeated words: "call call" -> "call", "open open" -> "open"
-      str = str.replace(/\b([a-zA-Z0-9]+)(?:\s+\1\b)+/gi, '$1');
-      // 2. Collapse repeated 2-word phrases: "call papa call papa" -> "call papa"
-      str = str.replace(/\b([a-zA-Z0-9]+\s+[a-zA-Z0-9]+)(?:\s+\1\b)+/gi, '$1');
-      // 3. Collapse repeated 3-word phrases: "open the app open the app" -> "open the app"
-      str = str.replace(/\b([a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+)(?:\s+\1\b)+/gi, '$1');
-      // 4. Remove duplicate bookend word: "open instagram open" -> "open instagram"
-      const words = str.split(/\s+/);
+
+      // 1. Remove repeated phrases of any word length from 15 down to 1
+      for (let len = 15; len >= 1; len--) {
+        const pattern = new RegExp('(\\b(?:\\S+\\s+){' + (len - 1) + '}\\S+)(?:\\s+\\1\\b)+', 'gi');
+        str = str.replace(pattern, '$1');
+      }
+
+      // 2. Collapse multi-chunk repetitions (e.g., "draw a cute dog draw a cute dog")
+      let words = str.split(/\s+/);
+      for (let chunkSize = Math.floor(words.length / 2); chunkSize >= 1; chunkSize--) {
+        let i = 0;
+        while (i + chunkSize * 2 <= words.length) {
+          const c1 = words.slice(i, i + chunkSize).join(' ').toLowerCase();
+          const c2 = words.slice(i + chunkSize, i + chunkSize * 2).join(' ').toLowerCase();
+          if (c1 === c2) {
+            words.splice(i + chunkSize, chunkSize);
+          } else {
+            i++;
+          }
+        }
+      }
+      str = words.join(' ');
+
+      // 3. Remove duplicate bookend word: "open instagram open" -> "open instagram"
+      words = str.split(/\s+/);
       if (words.length >= 3 && words[0].toLowerCase() === words[words.length - 1].toLowerCase()) {
         words.pop();
         str = words.join(' ');
       }
+
       return str.trim();
     }
   
@@ -1592,13 +1610,26 @@
       appendMessage('user', displayPrompt, null, currentAttachments);
       mVoiceState.textContent = 'THINKING...';
 
-            // 1. Instant Client Interceptors (Image Gen, Multi-AI Tools, WhatsApp)
-      const cleanLower = text.toLowerCase().trim();
+            // 1. Instant Client Interceptors (Image Gen, Multi-AI Tools, WhatsApp, Calling, App Launch)
+      let cleanLower = text.toLowerCase().trim();
 
+      // Multilingual & Hindi Normalizations
+      const hindiCallMatch = cleanLower.match(/^(.+?)\s+ko\s+(?:call|phone|dial|ring)\s*(?:karo|lagao|karna)?$/i) ||
+                             cleanLower.match(/^(.+?)\s+को\s*(?:कॉल|फोन|कॉल करो|फोन लगाओ|कॉल लगाओ)?$/i);
+      if (hindiCallMatch) {
+        cleanLower = `call ${hindiCallMatch[1].trim()}`;
+      }
+      const hindiOpenMatch = cleanLower.match(/^(.+?)\s+(?:kholo|chalao|start karo|open karo)$/i) ||
+                             cleanLower.match(/^(.+?)\s+(?:खोलो|चलाओ)$/i);
+      if (hindiOpenMatch && !/^(?:call|phone)/i.test(hindiOpenMatch[1])) {
+        cleanLower = `open ${hindiOpenMatch[1].trim()}`;
+      }
+
+      // A. AI Image Generation Intent (Instant & 100% Free)
       const imgMatch = cleanLower.match(/(?:generate|create|draw|make|paint)?\s*(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of|for|about|on)?\s*(.+)/i) || cleanLower.match(/^(?:draw|paint)\s+(.+)$/i);
       if (imgMatch) {
         const rawPrompt = imgMatch[1].trim();
-        const cleanPrompt = rawPrompt.replace(/^(?:me\s+)?(?:an?\s+)?/i, '').trim();
+        const cleanPrompt = removeSpeechStutter(rawPrompt.replace(/^(?:me\s+)?(?:an?\s+)?/i, '')).trim();
         const imageUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(cleanPrompt) + '?width=1024&height=1024&nologo=true&enhance=true';
         const imgResult = {
           content: 'Here is the AI image generated for **"' + cleanPrompt + '"**:',
@@ -1613,9 +1644,10 @@
         return;
       }
 
+      // B. Multi-AI Tool Router: Perplexity
       const perplexityMatch = cleanLower.match(/^(?:use\s+perplexity\s+(?:to\s+)?(?:research|search)?|deep\s+research|research\s+deeply\s+on|research)\s+(.+)$/i);
       if (perplexityMatch) {
-        const topic = perplexityMatch[1].trim();
+        const topic = removeSpeechStutter(perplexityMatch[1]).trim();
         const perplexityUrl = 'https://www.perplexity.ai/search?q=' + encodeURIComponent(topic);
         const pResult = {
           content: 'I have compiled a deep research dispatch for **"' + topic + '"**. Explore synthesized intelligence with web citations:',
@@ -1633,9 +1665,10 @@
         return;
       }
 
+      // C. Multi-AI Tool Router: Gamma
       const gammaMatch = cleanLower.match(/^(?:use\s+gamma\s+(?:to\s+)?(?:make|generate|create)?|generate\s+ppt|make\s+ppt|create\s+ppt|generate\s+presentation|make\s+presentation|create\s+presentation|create\s+slides)\s+(?:on|about)?\s*(.+)$/i);
       if (gammaMatch) {
-        const topic = gammaMatch[1].trim();
+        const topic = removeSpeechStutter(gammaMatch[1]).trim();
         const gammaUrl = 'https://gamma.app';
         const gResult = {
           content: '### 📊 Slide Deck Blueprint: ' + topic.toUpperCase() + '\n\n* **Slide 1: Title & Vision**\n* **Slide 2: Core Challenges**\n* **Slide 3: Strategic Innovation**\n* **Slide 4: Roadmap**\n* **Slide 5: Summary**\n\n*Convert this into an AI presentation directly on Gamma App below:*',
@@ -1653,9 +1686,10 @@
         return;
       }
 
+      // D. Multi-AI Tool Router: Antigravity / v0
       const devMatch = cleanLower.match(/^(?:use\s+(?:antigravity|v0|claude)\s+(?:to\s+)?(?:build|make|code)?|build\s+app|make\s+app|code\s+app|develop\s+app|create\s+website)\s+(?:for|about)?\s*(.+)$/i);
       if (devMatch) {
-        const topic = devMatch[1].trim();
+        const topic = removeSpeechStutter(devMatch[1]).trim();
         const devUrl = 'https://v0.dev';
         const dResult = {
           content: '### 🚀 Software Architecture: ' + topic.toUpperCase() + '\n\n* **Frontend**: Responsive PWA HUD\n* **Backend**: Node.js & WebSockets\n* **Intelligence**: Multimodal LLM\n* **Deployment**: 24/7 Cloud Autonomy\n\n*Build and deploy this app in Antigravity or v0 below:*',
@@ -1673,21 +1707,141 @@
         return;
       }
 
-      const isWaCmd = /^(?:open|launch|start|run|go\s+to)?\s*(?:whats\s*app|whatsapp)(?:\s+(?:app|web|application))?$/i.test(cleanLower) ||
-                      /^(?:whats\s*app|whatsapp)\s+(?:kholo|chalao|start|open\s*karo)$/i.test(cleanLower);
+      // E. WhatsApp Intent (Resilient matching)
+      const isQuestion = /^(?:what|who|why|where|how|when)\b/i.test(cleanLower);
+      const isWaCmd = !isQuestion && /\b(?:whats\s*app|whatsapp)\b/i.test(cleanLower) && (
+        /\b(?:open|launch|start|run|kholo|chalao|app|web|application)\b/i.test(cleanLower) ||
+        /^(?:whats\s*app|whatsapp)$/i.test(cleanLower)
+      );
       if (isWaCmd) {
         openWhatsAppWithFallback();
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const appUri = isAndroid 
+          ? 'intent:#Intent;package=com.whatsapp;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;S.browser_fallback_url=https%3A%2F%2Fweb.whatsapp.com;end'
+          : 'whatsapp://';
         const waResult = {
           content: 'Opening WhatsApp application now (or WhatsApp Web if not installed)...',
           action: 'OPEN_WHATSAPP',
-          appUrl: 'whatsapp://',
+          appUrl: appUri,
           webUrl: 'https://web.whatsapp.com',
-          url: 'whatsapp://',
+          url: appUri,
           role: { id: 'assistant', name: 'LADDU', icon: '🤖' },
           model: 'app-launcher'
         };
         appendMessage('assistant', waResult.content, waResult);
         speakMobile('Opening WhatsApp now.');
+        return;
+      }
+
+      // F. Phone Call Intent (Instant client execution)
+      const callMatch = cleanLower.match(/\b(?:call|phone|dial|ring|make\s+a\s+call\s+to|place\s+a\s+call\s+to)\s+(.+)$/i);
+      if (callMatch) {
+        const rawTarget = callMatch[1].trim();
+        const cleanTarget = removeSpeechStutter(rawTarget).replace(/\b(?:please|now|urgently)\b/gi, '').trim();
+        const phoneDigits = cleanTarget.replace(/[^0-9+]/g, '');
+
+        if (phoneDigits.length >= 7 && /^[\+]?[0-9\s\-]+$/.test(cleanTarget)) {
+          const cleanDigits = phoneDigits.replace(/[^0-9]/g, '');
+          const waDigits = cleanDigits.length === 10 ? ('91' + cleanDigits) : cleanDigits;
+          const telUri = `tel:${phoneDigits.startsWith('+') ? phoneDigits : (phoneDigits.length === 10 ? '+91' + phoneDigits : phoneDigits)}`;
+          const waUri = `https://wa.me/${waDigits}`;
+          triggerPhoneDialer(telUri, cleanTarget, phoneDigits);
+          const callResult = {
+            content: `Dialing ${cleanTarget} now...`,
+            action: 'CALL_PHONE',
+            contact: cleanTarget,
+            phoneNumber: phoneDigits,
+            telUri,
+            waUri,
+            role: { id: 'assistant', name: 'Telephony', icon: '📞' }
+          };
+          appendMessage('assistant', callResult.content, callResult);
+          speakMobile(`Dialing ${cleanTarget} now.`);
+          return;
+        }
+
+        const contact = StandaloneMobileEngine.findContact(cleanTarget);
+        if (contact && contact.phone && contact.phone.trim().length >= 3) {
+          const phone = contact.phone.trim();
+          const cleanDigits = phone.replace(/[^0-9]/g, '');
+          const waDigits = cleanDigits.length === 10 ? ('91' + cleanDigits) : cleanDigits;
+          const telUri = `tel:${phone.startsWith('+') ? phone : (phone.length === 10 ? '+91' + phone : phone)}`;
+          const waUri = `https://wa.me/${waDigits}`;
+          triggerPhoneDialer(telUri, contact.name, contact.phone);
+          const callResult = {
+            content: `Calling ${contact.name} (${contact.phone}) now...`,
+            action: 'CALL_PHONE',
+            contact: contact.name,
+            phoneNumber: contact.phone,
+            telUri,
+            waUri,
+            role: { id: 'assistant', name: 'Telephony', icon: '📞' }
+          };
+          appendMessage('assistant', callResult.content, callResult);
+          speakMobile(`Calling ${contact.name} now.`);
+          return;
+        }
+      }
+
+      // G. Open App / Web Service Intent (Instant client execution)
+      const openMatch = cleanLower.match(/\b(?:open|launch|start|go\s+to|navigate\s+to|visit)\s+(.+)$/i);
+      if (openMatch && !isWaCmd) {
+        const rawTarget = openMatch[1].trim();
+        const cleanTarget = removeSpeechStutter(rawTarget)
+          .replace(/\b(?:app|application|website|page|please|now)\b/gi, '')
+          .trim()
+          .toLowerCase();
+
+        const webMap = {
+          'instagram': 'https://www.instagram.com',
+          'insta': 'https://www.instagram.com',
+          'facebook': 'https://www.facebook.com',
+          'fb': 'https://www.facebook.com',
+          'youtube': 'https://www.youtube.com',
+          'yt': 'https://www.youtube.com',
+          'whatsapp': 'whatsapp://',
+          'gmail': 'https://mail.google.com',
+          'mail': 'https://mail.google.com',
+          'google': 'https://www.google.com',
+          'maps': 'https://maps.google.com',
+          'spotify': 'https://open.spotify.com',
+          'twitter': 'https://x.com',
+          'x': 'https://x.com',
+          'chatgpt': 'https://chatgpt.com',
+          'netflix': 'https://www.netflix.com',
+          'amazon': 'https://www.amazon.com',
+          'flipkart': 'https://www.flipkart.com',
+          'camera': 'camera'
+        };
+
+        const firstWord = cleanTarget.split(/\s+/)[0];
+        const lastWord = cleanTarget.split(/\s+/).pop();
+        const url = webMap[cleanTarget] || webMap[firstWord] || webMap[lastWord] || `https://www.${cleanTarget.replace(/[^a-z0-9]/g, '')}.com`;
+        const appName = cleanTarget.charAt(0).toUpperCase() + cleanTarget.slice(1);
+
+        if (url === 'camera') {
+          const camInput = document.getElementById('mCamInput');
+          if (camInput) camInput.click();
+        } else {
+          try {
+            const opened = window.open(url, '_blank');
+            if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+              window.location.href = url;
+            }
+          } catch(e) {
+            window.location.href = url;
+          }
+        }
+
+        const openResult = {
+          content: `Opening ${appName} now.`,
+          action: 'OPEN_URL',
+          url,
+          app: appName,
+          role: { id: 'assistant', name: 'Launcher', icon: '🚀' }
+        };
+        appendMessage('assistant', openResult.content, openResult);
+        speakMobile(`Opening ${appName} now.`);
         return;
       }
 
@@ -1797,7 +1951,7 @@
     if (SpeechRec) {
       recognition = new SpeechRec();
       recognition.lang = localStorage.getItem('laddu_speech_lang') || 'en-IN';
-      recognition.continuous = true;
+      recognition.continuous = siriModeActive ? true : false;
       recognition.interimResults = true;
 
       recognition.onstart = () => {
@@ -1812,18 +1966,19 @@
       let sessionTranscript = '';
       let speechDebounceTimer = null;
 
-      function dispatchAccumulatedSpeech() {
-        if (!sessionTranscript.trim()) return;
+      function dispatchAccumulatedSpeech(fallbackTranscript = '') {
+        const textToProcess = (sessionTranscript || fallbackTranscript || '').trim();
+        if (!textToProcess) return;
         if (speechDebounceTimer) {
           clearTimeout(speechDebounceTimer);
           speechDebounceTimer = null;
         }
-        const rawSpoken = removeSpeechStutter(sessionTranscript.trim());
+        const rawSpoken = removeSpeechStutter(textToProcess);
         sessionTranscript = '';
         const spoken = normalizeSpokenAliases(rawSpoken);
         console.log('[LADDU Mobile Clean Spoken Sentence]:', spoken);
 
-        if (/\b(?:hey\s+laddu|laddu|jarvis)\b/i.test(spoken)) {
+        if (/\b(?:hey\s+)?(?:laddu|jarvis)\b/i.test(spoken)) {
           playWakeChime();
         }
 
@@ -1856,36 +2011,49 @@
       recognition.onresult = (e) => {
         if (isSpeakingAudio) return;
 
-        // Build complete utterance by joining all continuous result chunks (both final and interim)
-        let fullTranscript = '';
-        for (let i = 0; i < e.results.length; i++) {
-          const chunk = (e.results[i][0].transcript || '').trim();
-          if (chunk) {
-            fullTranscript += (fullTranscript ? ' ' : '') + chunk;
+        let finalPart = '';
+        let interimPart = '';
+
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const res = e.results[i];
+          const text = (res[0].transcript || '').trim();
+          if (!text) continue;
+          if (res.isFinal) {
+            finalPart += (finalPart ? ' ' : '') + text;
+          } else {
+            interimPart += (interimPart ? ' ' : '') + text;
           }
         }
 
-        sessionTranscript = fullTranscript;
+        if (finalPart) {
+          sessionTranscript = (sessionTranscript ? sessionTranscript + ' ' : '') + finalPart;
+        }
 
-        const displayText = normalizeSpokenAliases(removeSpeechStutter(sessionTranscript));
+        let rawSpoken = sessionTranscript;
+        if (interimPart && !rawSpoken.toLowerCase().includes(interimPart.toLowerCase())) {
+          rawSpoken = (rawSpoken ? rawSpoken + ' ' : '') + interimPart;
+        }
+
+        const cleanSpoken = removeSpeechStutter(rawSpoken);
+        const displayText = normalizeSpokenAliases(cleanSpoken);
         if (displayText) {
           mVoiceState.textContent = 'HEARING: "' + displayText + '"';
           mInput.placeholder = displayText;
         }
 
-        // Smart Debounce: Wait for complete thought
-        const cleanedCheck = removeSpeechStutter(sessionTranscript)
+        // Smart Debounce: 500ms response window for fast snappy conversational turn-taking
+        const cleanedCheck = cleanSpoken
           .replace(/^(?:hey\s+)?(?:laddu|jarvis)[,\s]*/i, '')
           .trim()
           .toLowerCase();
         
         const isIncompleteStarter = /^(?:call|dial|phone|ring|open|launch|start|visit|generate|create|draw|make|paint|use|search|find|show|what\s+is|who\s+is|how\s+to|tell\s+me)$/i.test(cleanedCheck);
-        const debounceWait = isIncompleteStarter ? 1800 : 1000;
+        const debounceWait = isIncompleteStarter ? 1200 : 500;
 
         if (speechDebounceTimer) clearTimeout(speechDebounceTimer);
-        if (sessionTranscript.trim()) {
+        if (cleanSpoken.trim()) {
           speechDebounceTimer = setTimeout(() => {
-            dispatchAccumulatedSpeech();
+            dispatchAccumulatedSpeech(cleanSpoken);
           }, debounceWait);
         }
       };

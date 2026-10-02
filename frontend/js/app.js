@@ -66,22 +66,40 @@ function initClock() {
 // Native WhatsApp Protocol Launcher with Auto Web Fallback (Desktop)
 
 function removeSpeechStutter(text) {
-  if (!text) return '';
-  let str = text.trim();
-  // 1. Collapse immediate repeated words: "call call" -> "call", "open open" -> "open"
-  str = str.replace(/\b([a-zA-Z0-9]+)(?:\s+\1\b)+/gi, '$1');
-  // 2. Collapse repeated 2-word phrases: "call papa call papa" -> "call papa"
-  str = str.replace(/\b([a-zA-Z0-9]+\s+[a-zA-Z0-9]+)(?:\s+\1\b)+/gi, '$1');
-  // 3. Collapse repeated 3-word phrases: "open the app open the app" -> "open the app"
-  str = str.replace(/\b([a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+)(?:\s+\1\b)+/gi, '$1');
-  // 4. Remove duplicate bookend word: "open instagram open" -> "open instagram"
-  const words = str.split(/\s+/);
-  if (words.length >= 3 && words[0].toLowerCase() === words[words.length - 1].toLowerCase()) {
-    words.pop();
-    str = words.join(' ');
-  }
-  return str.trim();
-}
+      if (!text) return '';
+      let str = text.trim();
+
+      // 1. Remove repeated phrases of any word length from 15 down to 1
+      for (let len = 15; len >= 1; len--) {
+        const pattern = new RegExp('(\\b(?:\\S+\\s+){' + (len - 1) + '}\\S+)(?:\\s+\\1\\b)+', 'gi');
+        str = str.replace(pattern, '$1');
+      }
+
+      // 2. Collapse multi-chunk repetitions (e.g., "draw a cute dog draw a cute dog")
+      let words = str.split(/\s+/);
+      for (let chunkSize = Math.floor(words.length / 2); chunkSize >= 1; chunkSize--) {
+        let i = 0;
+        while (i + chunkSize * 2 <= words.length) {
+          const c1 = words.slice(i, i + chunkSize).join(' ').toLowerCase();
+          const c2 = words.slice(i + chunkSize, i + chunkSize * 2).join(' ').toLowerCase();
+          if (c1 === c2) {
+            words.splice(i + chunkSize, chunkSize);
+          } else {
+            i++;
+          }
+        }
+      }
+      str = words.join(' ');
+
+      // 3. Remove duplicate bookend word: "open instagram open" -> "open instagram"
+      words = str.split(/\s+/);
+      if (words.length >= 3 && words[0].toLowerCase() === words[words.length - 1].toLowerCase()) {
+        words.pop();
+        str = words.join(' ');
+      }
+
+      return str.trim();
+    }
 window.removeSpeechStutter = removeSpeechStutter;
 
 function openWhatsAppWithFallback(phone = '', text = '') {
@@ -513,9 +531,10 @@ function initSpeechRecognition() {
   let deskSessionTranscript = '';
   let deskSpeechDebounceTimer = null;
 
-  async function dispatchDeskAccumulatedSpeech() {
-    if (!deskSessionTranscript.trim()) return;
-    const rawSpoken = removeSpeechStutter(deskSessionTranscript.trim());
+  async function dispatchDeskAccumulatedSpeech(fallbackTranscript = '') {
+    const textToProcess = (deskSessionTranscript || fallbackTranscript || '').trim();
+    if (!textToProcess) return;
+    const rawSpoken = removeSpeechStutter(textToProcess);
     deskSessionTranscript = '';
 
     let cleanedFinal = rawSpoken.replace(/\b(?:ladder|latter|latte|let\s*do|lead\s*you|let\s*you|ladoo|laddoo|ladu|luddu|laadu|laru|lattu|lallu|lalu|labbu|radu|raddu|radoo)\b/gi, 'laddu');
@@ -555,40 +574,52 @@ function initSpeechRecognition() {
   recognition.onresult = (event) => {
     if (isSpeakingAudio) return;
 
-    // Build complete utterance by joining all continuous chunks across final and interim stream
-    let fullTranscript = '';
-    for (let i = 0; i < event.results.length; i++) {
-      const chunk = (event.results[i][0].transcript || '').trim();
-      if (chunk) {
-        fullTranscript += (fullTranscript ? ' ' : '') + chunk;
+    let finalPart = '';
+    let interimPart = '';
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const res = event.results[i];
+      const text = (res[0].transcript || '').trim();
+      if (!text) continue;
+      if (res.isFinal) {
+        finalPart += (finalPart ? ' ' : '') + text;
+      } else {
+        interimPart += (interimPart ? ' ' : '') + text;
       }
     }
 
-    deskSessionTranscript = fullTranscript;
+    if (finalPart) {
+      deskSessionTranscript = (deskSessionTranscript ? deskSessionTranscript + ' ' : '') + finalPart;
+    }
 
+    let rawSpoken = deskSessionTranscript;
+    if (interimPart && !rawSpoken.toLowerCase().includes(interimPart.toLowerCase())) {
+      rawSpoken = (rawSpoken ? rawSpoken + ' ' : '') + interimPart;
+    }
+
+    const cleanSpoken = removeSpeechStutter(rawSpoken);
     const chatInput = document.getElementById('chatInput');
     const coreStateText = document.getElementById('coreStateText');
 
-    const displayTranscript = removeSpeechStutter(deskSessionTranscript);
-    if (displayTranscript) {
-      let hearingText = displayTranscript.replace(/\b(?:ladder|let do|lead you|ladoo|laddoo|ladu|luddu|ludo)\b/gi, 'laddu');
+    if (cleanSpoken) {
+      let hearingText = cleanSpoken.replace(/\b(?:ladder|let do|lead you|ladoo|laddoo|ladu|luddu|ludo)\b/gi, 'laddu');
       if (coreStateText) coreStateText.textContent = 'HEARING: "' + hearingText + '"';
       if (chatInput) chatInput.placeholder = '🎙️ Hearing: "' + hearingText + '"...';
     }
 
-    // Smart Debounce: Wait for complete command
-    const cleanedCheck = removeSpeechStutter(deskSessionTranscript)
+    // Smart Debounce: 500ms snappy response window
+    const cleanedCheck = cleanSpoken
       .replace(/^(?:hey\s+)?(?:laddu|jarvis)[,\s]*/i, '')
       .trim()
       .toLowerCase();
     
     const isIncompleteStarter = /^(?:call|dial|phone|ring|open|launch|start|visit|generate|create|draw|make|paint|use|search|find|show|what\s+is|who\s+is|how\s+to|tell\s+me)$/i.test(cleanedCheck);
-    const debounceWait = isIncompleteStarter ? 1800 : 1000;
+    const debounceWait = isIncompleteStarter ? 1200 : 500;
 
     if (deskSpeechDebounceTimer) clearTimeout(deskSpeechDebounceTimer);
-    if (deskSessionTranscript.trim()) {
+    if (cleanSpoken.trim()) {
       deskSpeechDebounceTimer = setTimeout(() => {
-        dispatchDeskAccumulatedSpeech();
+        dispatchDeskAccumulatedSpeech(cleanSpoken);
       }, debounceWait);
     }
   };
