@@ -404,7 +404,11 @@ function initSpeechRecognition() {
     if (!cleanedFinal) return;
 
     // Multi-Accent & Phonetic Alias Normalization (ladder -> laddu)
-    cleanedFinal = cleanedFinal.replace(/\b(?:ladder|let do|lead you|ladoo|laddoo|ladu|luddu|ludo)\b/gi, 'laddu');
+    cleanedFinal = cleanedFinal.replace(/\b(?:ladder|latter|latte|let\s*do|lead\s*you|let\s*you|ladoo|laddoo|ladu|luddu|laadu|laru|lattu|lallu|lalu|labbu|radu|raddu|radoo)\b/gi, 'laddu');
+    cleanedFinal = cleanedFinal.replace(/\b(?:hey|hay|hi|hello|ok|okay|sun|suno|are|arre|oye|oi|ae)\s+laddu\b/gi, 'hey laddu');
+    if (/\b(?:hey\s+laddu|laddu|jarvis)\b/i.test(cleanedFinal)) {
+      playWakeChime();
+    }
 
     if (chatInput) chatInput.placeholder = defaultPlaceholder;
     console.log('[LADDU Voice Input Final]:', cleanedFinal);
@@ -623,7 +627,7 @@ function appendChatMessage(role, text, citations = [], roleInfo = null, actionMe
   const msgEl = document.createElement('div');
   msgEl.className = `message ${role}`;
 
-  const avatar = role === 'assistant' ? (roleInfo?.icon || 'L') : 'U';
+  const avatar = role === 'assistant' ? '<img src="./icons/icon-192.png" alt="LADDU" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">' : 'U';
   let badgeLabel = '';
   if (roleInfo) {
     if (roleInfo.id === 'friend') badgeLabel = 'FRIEND';
@@ -795,6 +799,162 @@ async function sendChat() {
   }
 }
 
+
+// ==========================================
+// GEMINI MULTI-KEY POOL & ROTATION (DESKTOP)
+// ==========================================
+class GeminiKeyPool {
+  static getKeys() {
+    const raw = localStorage.getItem('laddu_gemini_keys') || localStorage.getItem('laddu_gemini_key') || '';
+    if (!raw) return [];
+    return raw.split(/[\n,;]+/).map(k => k.trim()).filter(k => k.length > 10);
+  }
+
+  static setKeys(keysInput) {
+    let arr = [];
+    if (Array.isArray(keysInput)) {
+      arr = keysInput;
+    } else if (typeof keysInput === 'string') {
+      arr = keysInput.split(/[\n,;]+/);
+    }
+    const cleaned = arr.map(k => k.trim()).filter(k => k.length > 10);
+    localStorage.setItem('laddu_gemini_keys', cleaned.join(','));
+    if (cleaned.length > 0) {
+      localStorage.setItem('laddu_gemini_key', cleaned[0]);
+    }
+    return cleaned;
+  }
+
+  static getActiveKey() {
+    const keys = this.getKeys();
+    if (keys.length === 0) return null;
+    let idx = parseInt(localStorage.getItem('laddu_gemini_active_idx') || '0', 10);
+    if (isNaN(idx) || idx >= keys.length) idx = 0;
+    return { key: keys[idx], index: idx, total: keys.length };
+  }
+
+  static rotateKey() {
+    const keys = this.getKeys();
+    if (keys.length <= 1) return null;
+    let idx = parseInt(localStorage.getItem('laddu_gemini_active_idx') || '0', 10);
+    idx = (idx + 1) % keys.length;
+    localStorage.setItem('laddu_gemini_active_idx', idx.toString());
+    console.log('[LADDU Gemini Pool] Rotated to key #' + (idx + 1) + ' of ' + keys.length);
+    return { key: keys[idx], index: idx, total: keys.length };
+  }
+
+  static async generate(promptText, attachedItems = [], preferredModel = 'gemini-2.5-flash') {
+    const keys = this.getKeys();
+    if (keys.length === 0) return null;
+
+    const models = [preferredModel, 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const uniqueModels = [...new Set(models)];
+
+    const parts = [
+      { text: 'You are LADDU, an AI assistant inspired by JARVIS. Respond helpfully, warmly, concisely, and intelligently. User says: ' + promptText }
+    ];
+
+    if (attachedItems && attachedItems.length > 0) {
+      for (const item of attachedItems) {
+        if (item.type === 'image' && item.data) {
+          parts.push({
+            inlineData: {
+              mimeType: item.mimeType || 'image/jpeg',
+              data: item.data.replace(/^data:image\/[a-z]+;base64,/, '')
+            }
+          });
+        }
+      }
+    }
+
+    let startIdx = parseInt(localStorage.getItem('laddu_gemini_active_idx') || '0', 10);
+    if (isNaN(startIdx) || startIdx >= keys.length) startIdx = 0;
+
+    for (let attempt = 0; attempt < keys.length; attempt++) {
+      const currentIdx = (startIdx + attempt) % keys.length;
+      const currentKey = keys[currentIdx];
+
+      for (const model of uniqueModels) {
+        try {
+          const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + currentKey;
+          const res = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts }],
+              tools: [{ googleSearch: {} }]
+            })
+          });
+
+          if (res.status === 429) {
+            console.warn('[LADDU] Key #' + (currentIdx + 1) + ' hit 429 quota limit. Rotating...');
+            this.rotateKey();
+            break;
+          }
+
+          if (!res.ok) continue;
+
+          const data = await res.json();
+          const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (reply) {
+            localStorage.setItem('laddu_gemini_active_idx', currentIdx.toString());
+            const citations = [];
+            const grounding = data?.candidates?.[0]?.groundingMetadata;
+            if (grounding?.groundingChunks) {
+              for (const chunk of grounding.groundingChunks) {
+                if (chunk.web) citations.push({ source: chunk.web.title, url: chunk.web.uri });
+              }
+            }
+            return {
+              text: reply,
+              citations,
+              model: 'desktop-gemini-pool (' + model + ')',
+              keyIndex: currentIdx + 1,
+              totalKeys: keys.length
+            };
+          }
+        } catch (err) {
+          console.warn('[LADDU] Error contacting Gemini on key #' + (currentIdx + 1), err);
+        }
+      }
+    }
+    return null;
+  }
+}
+
+// Sci-Fi Wake Chime (Ascending D5 -> A5 tone)
+function playWakeChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, now);
+    gain1.gain.setValueAtTime(0.18, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.14);
+
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880, now + 0.12);
+    gain2.gain.setValueAtTime(0.22, now + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.12);
+    osc2.stop(now + 0.35);
+  } catch (e) {
+    console.warn('Wake chime error:', e);
+  }
+}
+
 async function processDesktopAutonomous(rawText, currentAttachments = []) {
   const text = (rawText || '').trim();
   const cleanLower = text.toLowerCase().trim();
@@ -851,52 +1011,15 @@ async function processDesktopAutonomous(rawText, currentAttachments = []) {
     };
   }
 
-  // 3. Direct Gemini Cloud API if API key configured
-  const geminiKey = localStorage.getItem('laddu_gemini_key') || '';
-  if (geminiKey) {
-    try {
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-      const parts = [{ text: `You are LADDU, an AI assistant inspired by JARVIS. Respond helpfully, concisely and warmly. User says: ${text}` }];
-      if (currentAttachments && currentAttachments.length > 0) {
-        for (const item of currentAttachments) {
-          if (item.type === 'image' && item.data) {
-            parts.push({
-              inlineData: {
-                mimeType: item.mimeType || 'image/jpeg',
-                data: item.data.replace(/^data:image\/[a-z]+;base64,/, '')
-              }
-            });
-          }
-        }
-      }
-      const gRes = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts }],
-          tools: [{ googleSearch: {} }]
-        })
-      });
-      const gData = await gRes.json();
-      const reply = gData?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (reply) {
-        const citations = [];
-        const grounding = gData?.candidates?.[0]?.groundingMetadata;
-        if (grounding?.groundingChunks) {
-          for (const chunk of grounding.groundingChunks) {
-            if (chunk.web) citations.push({ source: chunk.web.title, url: chunk.web.uri });
-          }
-        }
-        return {
-          content: reply,
-          citations,
-          role: { id: 'friend', name: 'Close Friend', icon: '🧡' },
-          model: 'desktop-gemini-cloud'
-        };
-      }
-    } catch (e) {
-      console.warn('Gemini cloud error:', e);
-    }
+  // 3. Multi-Key Gemini Cloud API Pool with Auto-Failover
+  const geminiRes = await GeminiKeyPool.generate(text, currentAttachments);
+  if (geminiRes) {
+    return {
+      content: geminiRes.text,
+      citations: geminiRes.citations,
+      role: { id: 'friend', name: 'Close Friend', icon: '🧡' },
+      model: geminiRes.model + ' [Key #' + geminiRes.keyIndex + '/' + geminiRes.totalKeys + ']'
+    };
   }
 
   // 4. Standalone Math Calculation (Word operators, %, powers, trailing ?)
@@ -2058,30 +2181,59 @@ function initDesktopContactsAndSettings() {
 
   // Test Gemini Key
   btnTestKey?.addEventListener('click', async () => {
-    const key = geminiInput.value.trim();
-    const model = modelSelect ? modelSelect.value : 'gemini-2.5-flash';
-    testStatus.style.color = 'var(--neon-cyan)';
-    testStatus.textContent = 'Testing connection to Google Gemini API...';
+    const inputVal = geminiInput.value.trim();
+    const keys = inputVal ? inputVal.split(/[\n,;]+/).map(k => k.trim()).filter(k => k.length > 10) : GeminiKeyPool.getKeys();
 
-    try {
-      const res = await fetch('/api/settings/test-gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: key, model })
-      });
-      const data = await res.json();
-      if (data.success) {
-        testStatus.style.color = 'var(--neon-green)';
-        testStatus.textContent = `✅ ${data.message || 'Connected to Google Gemini (Free Tier Active)!'}`;
-      } else {
-        testStatus.style.color = 'var(--neon-red)';
-        testStatus.textContent = `❌ ${data.message || 'Connection failed.'}`;
+    if (keys.length === 0) {
+      testStatus.textContent = '⚠️ Please enter at least one Gemini API Key to test.';
+      testStatus.style.color = 'var(--neon-amber)';
+      return;
+    }
+
+    testStatus.textContent = '⚡ Testing ' + keys.length + ' key(s) in pool...';
+    testStatus.style.color = 'var(--neon-cyan)';
+
+    let successCount = 0;
+    let firstError = '';
+
+    for (let i = 0; i < keys.length; i++) {
+      try {
+        const gRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + keys[i], {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] })
+        });
+        if (gRes.ok) {
+          successCount++;
+        } else {
+          const errData = await gRes.json();
+          firstError = errData?.error?.message || ('HTTP ' + gRes.status);
+        }
+      } catch (e) {
+        firstError = e.message;
       }
-    } catch (err) {
+    }
+
+    if (successCount > 0) {
+      GeminiKeyPool.setKeys(keys);
+      updateDeskKeyPoolBadge();
+      testStatus.textContent = '✅ ' + successCount + '/' + keys.length + ' Key(s) Verified Healthy (Free Tier Active)!';
+      testStatus.style.color = 'var(--neon-green)';
+    } else {
+      testStatus.textContent = '❌ Key validation failed: ' + firstError;
       testStatus.style.color = 'var(--neon-red)';
-      testStatus.textContent = `❌ Network Error: ${err.message}`;
     }
   });
+
+  function updateDeskKeyPoolBadge() {
+    const keys = GeminiKeyPool.getKeys();
+    const badge = document.getElementById('deskKeyPoolBadge');
+    if (badge) {
+      badge.textContent = keys.length + (keys.length === 1 ? ' Key Active' : ' Keys Active');
+      badge.style.color = keys.length > 0 ? 'var(--neon-green)' : 'var(--neon-amber)';
+      badge.style.borderColor = keys.length > 0 ? 'rgba(0,255,170,0.3)' : 'rgba(255,170,0,0.3)';
+    }
+  }
 
   async function loadDesktopSettings() {
     const voiceSelect = document.getElementById('deskVoiceGenderSelect');
@@ -2103,10 +2255,11 @@ function initDesktopContactsAndSettings() {
     if (inputRemote) {
       inputRemote.value = localStorage.getItem('laddu_remote_server_url') || '';
     }
-    const localKey = localStorage.getItem('laddu_gemini_key') || '';
-    if (localKey && geminiInput) {
-      geminiInput.value = localKey;
+    const savedKeys = localStorage.getItem('laddu_gemini_keys') || localStorage.getItem('laddu_gemini_key') || '';
+    if (savedKeys && geminiInput) {
+      geminiInput.value = savedKeys.replace(/,/g, '\n');
     }
+    updateDeskKeyPoolBadge();
 
     try {
       const customRemote = (localStorage.getItem('laddu_remote_server_url') || '').trim().replace(/\/+$/, '');
@@ -2141,7 +2294,8 @@ function initDesktopContactsAndSettings() {
         localStorage.setItem('laddu_remote_server_url', inputRemote.value.trim());
       }
       if (geminiApiKey) {
-        localStorage.setItem('laddu_gemini_key', geminiApiKey);
+        GeminiKeyPool.setKeys(geminiApiKey);
+        updateDeskKeyPoolBadge();
       }
 
       statusEl.textContent = 'Applying settings...';

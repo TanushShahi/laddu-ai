@@ -2,27 +2,27 @@
   "name": "LADDU — Universal Personal AI Assistant",
   "short_name": "LADDU",
   "description": "Voice-First, Speaker Biometric Recognition, Multi-Role Companion & Local AI Assistant",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#060911",
   "theme_color": "#00f0ff",
-  "id": "/?source=pwa",
+  "id": "./?source=pwa",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "./icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "./icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon.svg",
+      "src": "./icons/icon.svg",
       "sizes": "512x512",
       "type": "image/svg+xml"
     }

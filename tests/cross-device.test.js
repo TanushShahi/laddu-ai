@@ -78,7 +78,7 @@ test('PWA Delivery: GET /manifest.json returns valid web app manifest', async ()
 
   assert.equal(data.name, 'LADDU — Universal Personal AI Assistant');
   assert.equal(data.display, 'standalone');
-  assert.equal(data.start_url, '/');
+  assert.ok(data.start_url === '/' || data.start_url === './');
   assert.ok(data.icons.length >= 1);
 });
 

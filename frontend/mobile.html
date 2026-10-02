@@ -12,6 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="LADDU">
+  <link rel="shortcut icon" type="image/x-icon" href="./icons/laddu.ico">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png">
@@ -117,9 +118,10 @@
 </head>
 <body class="sci-fi-theme">
   <!-- Mobile Header -->
+  <audio id="mBgKeepAliveAudio" src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA" loop playsinline style="display:none;"></audio>
   <header class="mobile-header">
     <div style="display:flex;align-items:center;gap:10px;">
-      <div class="reactor-mini"></div>
+      <img src="./icons/icon-192.png" alt="LADDU" class="laddu-header-logo">
       <div>
         <div style="font-family:var(--font-hud);font-size:16px;color:#fff;letter-spacing:1px;">LADDU</div>
         <div style="font-size:10px;color:var(--neon-cyan);">MOBILE COMPANION</div>
@@ -200,6 +202,9 @@
 
     <!-- Voice Visualizer & Push-To-Talk Hero -->
     <div class="glass-panel mobile-voice-hero">
+      <div class="laddu-hero-logo-wrap">
+        <img src="./icons/icon-192.png" alt="LADDU Core" class="laddu-hero-logo" id="mHeroLogo">
+      </div>
       <div class="reactor-center-status">
         <span class="status-label">VOICE SENSOR</span>
         <span class="status-state" id="mVoiceState">STANDBY</span>
@@ -341,32 +346,23 @@
         </select>
       </div>
 
-      <div style="margin-bottom:14px;">
-        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">Google Gemini Free API Key:</label>
-        <input type="password" id="mGeminiKeyInput" placeholder="Paste Gemini API Key (optional)" style="width:100%;padding:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border-cyan);color:#fff;border-radius:6px;font-size:12px;">
-        <div style="font-size:10px;color:var(--neon-cyan);margin-top:4px;">
-          Free key (no credit card): <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--neon-cyan);text-decoration:underline;">aistudio.google.com</a>
+      <div style="margin-bottom:14px;background:rgba(0,240,255,0.05);border:1px solid var(--border-cyan);border-radius:8px;padding:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-family:var(--font-hud);font-size:11px;color:#fff;font-weight:700;">GOOGLE GEMINI KEY(S) POOL</span>
+            <span id="mKeyPoolBadge" style="font-size:9px;padding:2px 6px;border-radius:10px;background:rgba(0,255,170,0.15);color:var(--neon-green);border:1px solid rgba(0,255,170,0.3);">0 Keys Active</span>
+          </div>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" class="action-btn outline-btn" style="padding:2px 6px;font-size:10px;text-decoration:none;">GET FREE KEY ↗</a>
         </div>
+        <textarea id="mGeminiKeyInput" rows="2" placeholder="Paste one or multiple free Gemini keys (comma or newline separated)..." style="width:100%;box-sizing:border-box;padding:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border-cyan);color:#fff;border-radius:6px;font-size:11px;font-family:monospace;resize:vertical;"></textarea>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:4px;">
+          Rotates keys automatically and fails over if rate limits (429) are reached.
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <button class="action-btn glow-btn" id="mBtnTestGemini" style="padding:6px 12px;font-size:11px;width:100%;">⚡ TEST KEYS POOL</button>
+        </div>
+        <div id="mTestStatus" style="font-size:11px;min-height:16px;margin-top:6px;"></div>
       </div>
-
-      <div style="margin-bottom:14px;">
-        <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">Remote Server URL (Optional):</label>
-        <input type="text" id="mRemoteServerUrl" placeholder="https://xxxx.trycloudflare.com (or leave empty)" style="width:100%;padding:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border-cyan);color:#fff;border-radius:6px;font-size:11px;">
-        <span style="font-size:10px;color:var(--text-dim);display:block;margin-top:2px;">Connect to your laptop over Cloudflare Tunnel or Cloud host from anywhere.</span>
-      </div>
-
-      <div style="display:flex;gap:6px;margin-bottom:10px;">
-        <button class="action-btn outline-btn" id="mBtnTestGemini" style="padding:6px 12px;font-size:11px;width:100%;">🧪 TEST GEMINI KEY</button>
-      </div>
-      <div id="mTestStatus" style="font-size:11px;min-height:16px;margin-bottom:8px;"></div>
-
-      <div id="mSettingsStatus" style="font-size:11px;color:var(--neon-green);margin-bottom:12px;min-height:16px;"></div>
-
-      <button class="action-btn glow-btn" id="mBtnSaveSettings" style="width:100%;padding:10px;font-size:12px;">
-        SAVE & APPLY SETTINGS
-      </button>
-    </div>
-  </div>
 
   <script>
     // ==========================================
@@ -782,51 +778,14 @@
           };
         }
 
-        // 3. Direct Gemini Cloud Call from mobile if key present (Multimodal + Google Search)
-        const geminiKey = localStorage.getItem('laddu_gemini_key') || '';
-        if (geminiKey) {
-          try {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-            const parts = [
-              { text: `You are LADDU, an AI assistant inspired by JARVIS. Respond helpfully, intelligently and concisely. User says: ${text}` }
-            ];
-
-            if (options?.attachedItems) {
-              for (const item of options.attachedItems) {
-                if (item.type === 'image' && item.data) {
-                  parts.push({
-                    inlineData: {
-                      mimeType: item.mimeType || 'image/jpeg',
-                      data: item.data.replace(/^data:image\/[a-z]+;base64,/, '')
-                    }
-                  });
-                }
-              }
-            }
-
-            const gRes = await fetch(apiUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ role: 'user', parts }],
-                tools: [{ googleSearch: {} }] // Perplexity-style live search grounding!
-              })
-            });
-            const gData = await gRes.json();
-            const reply = gData?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (reply) {
-              const citations = [];
-              const grounding = gData?.candidates?.[0]?.groundingMetadata;
-              if (grounding?.groundingChunks) {
-                for (const chunk of grounding.groundingChunks) {
-                  if (chunk.web) citations.push({ source: chunk.web.title, url: chunk.web.uri });
-                }
-              }
-              return { content: reply, model: 'mobile-gemini-cloud', citations };
-            }
-          } catch (e) {
-            console.warn('Direct Gemini call error:', e);
-          }
+        // 3. Multi-Key Gemini Cloud Pool with Auto-Failover (Multimodal + Google Search)
+        const geminiRes = await GeminiKeyPool.generate(text, options?.attachedItems);
+        if (geminiRes) {
+          return {
+            content: geminiRes.text,
+            model: geminiRes.model + ' (Key #' + geminiRes.keyIndex + '/' + geminiRes.totalKeys + ')',
+            citations: geminiRes.citations
+          };
         }
 
         // 4. Standalone Math Calculation (Fixes ? and word operators)
@@ -1083,9 +1042,12 @@
     };
 
     function normalizeSpokenAliases(transcript) {
-      return (transcript || '')
-        .replace(/\b(?:ladder|let\s*do|lead\s*you|let\s*you|ladoo|laddoo|ladu|luddu|laadu|laru|lattu)\b/gi, 'laddu')
-        .replace(/\b(?:hey|hay|hi|hello|ok|okay)\s+laddu\b/gi, 'hey laddu');
+      if (!transcript) return '';
+      let s = transcript;
+      s = s.replace(/\b(?:ladder|latter|latte|let\s*do|lead\s*you|let\s*you|ladoo|laddoo|ladu|luddu|laadu|laru|lattu|lallu|lalu|labbu|radu|raddu|radoo)\b/gi, 'laddu');
+      s = s.replace(/\b(?:hey|hay|hi|hello|ok|okay|sun|suno|are|arre|oye|oi|ae)\s+laddu\b/gi, 'hey laddu');
+      s = s.replace(/^laddu\b/i, 'hey laddu');
+      return s;
     }
 
     async function sendMobileChat() {
@@ -1195,6 +1157,8 @@
       recognition.onstart = () => {
         isRecognizing = true;
         mVoiceState.textContent = 'LISTENING... (SPEAK NOW)';
+        const heroLogo = document.getElementById('mHeroLogo');
+        if (heroLogo) heroLogo.className = 'laddu-hero-logo listening';
         mBtnVoice.innerHTML = '<span class="btn-icon" style="color:var(--neon-red);">🔴</span> LISTENING... TAP TO STOP';
         mBtnVoice.classList.add('active');
       };
@@ -1220,7 +1184,11 @@
         }
 
         if (finalTranscript.trim()) {
-          const spoken = normalizeSpokenAliases(finalTranscript.trim());
+          const rawSpoken = finalTranscript.trim();
+          const spoken = normalizeSpokenAliases(rawSpoken);
+          if (/\b(?:hey\s+laddu|laddu|jarvis)\b/i.test(spoken)) {
+            playWakeChime();
+          }
           console.log('[LADDU Mobile Speech Final]:', spoken);
           mVoiceState.textContent = 'TRANSCRIBED!';
           mInput.placeholder = 'Command or converse...';
@@ -1258,9 +1226,15 @@
         mBtnVoice.classList.remove('active');
         mBtnVoice.innerHTML = '<span class="btn-icon">🎙</span> PUSH TO COMMUNICATE';
         if (siriModeActive && !isSpeakingAudio) {
-          try { recognition.start(); } catch {}
+          setTimeout(() => {
+            if (siriModeActive && !isSpeakingAudio && recognition && !isRecognizing) {
+              try { recognition.start(); } catch(e){}
+            }
+          }, 200);
         } else {
           mVoiceState.textContent = 'STANDBY';
+          const heroLogo = document.getElementById('mHeroLogo');
+          if (heroLogo) heroLogo.className = 'laddu-hero-logo';
         }
       };
 
@@ -1293,6 +1267,13 @@
     // ==========================================
     mToggleSiri.addEventListener('change', async (e) => {
       siriModeActive = e.target.checked;
+      localStorage.setItem('laddu_siri_mode', siriModeActive ? 'true' : 'false');
+      const bgAudio = document.getElementById('mBgKeepAliveAudio');
+      if (siriModeActive && bgAudio) {
+        bgAudio.play().catch(() => {});
+      } else if (bgAudio) {
+        bgAudio.pause();
+      }
       if (siriModeActive) {
         mSiriStatusText.textContent = 'Background wake-word & sensors: ACTIVE';
         mSiriStatusText.style.color = 'var(--neon-green)';
@@ -1342,6 +1323,27 @@
         }
       }
     });
+
+    // Initialize Siri Mode from LocalStorage
+    const savedSiriMode = localStorage.getItem('laddu_siri_mode') === 'true';
+    if (savedSiriMode && mToggleSiri) {
+      mToggleSiri.checked = true;
+      setTimeout(() => {
+        mToggleSiri.dispatchEvent(new Event('change'));
+      }, 500);
+    }
+
+    // Update Key Pool Badge
+    function updateKeyPoolBadge() {
+      const keys = GeminiKeyPool.getKeys();
+      const badge = document.getElementById('mKeyPoolBadge');
+      if (badge) {
+        badge.textContent = keys.length + (keys.length === 1 ? ' Key Active' : ' Keys Active');
+        badge.style.color = keys.length > 0 ? 'var(--neon-green)' : 'var(--neon-amber)';
+        badge.style.borderColor = keys.length > 0 ? 'rgba(0,255,170,0.3)' : 'rgba(255,170,0,0.3)';
+      }
+    }
+    updateKeyPoolBadge();
 
     // ==========================================
     // 6. CONTACTS MODAL LOGIC (OFFLINE + SYNC)
@@ -1477,48 +1479,47 @@
     });
 
     mBtnTestGemini?.addEventListener('click', async () => {
-      const keyToTest = mGeminiKeyInput.value.trim() || localStorage.getItem('laddu_gemini_key') || '';
-      mTestStatus.textContent = 'Testing connection to Google Gemini 2.5 Flash...';
+      const inputVal = mGeminiKeyInput.value.trim();
+      const keys = inputVal ? inputVal.split(/[\n,;]+/).map(k => k.trim()).filter(k => k.length > 10) : GeminiKeyPool.getKeys();
+
+      if (keys.length === 0) {
+        mTestStatus.textContent = '⚠️ Please enter at least one Gemini API Key to test.';
+        mTestStatus.style.color = 'var(--neon-amber)';
+        return;
+      }
+
+      mTestStatus.textContent = '⚡ Testing ' + keys.length + ' key(s) in pool...';
       mTestStatus.style.color = 'var(--neon-cyan)';
-      try {
-        const res = await fetch('/api/settings/test-gemini', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ apiKey: keyToTest, model: 'gemini-2.5-flash' })
-        });
-        const data = await res.json();
-        if (data.ok) {
-          mTestStatus.textContent = '✓ Google Gemini connected! ' + (data.message || 'Model: gemini-2.5-flash');
-          mTestStatus.style.color = 'var(--neon-green)';
-        } else {
-          mTestStatus.textContent = '✕ Error: ' + (data.error || 'Failed to authenticate');
-          mTestStatus.style.color = 'var(--neon-red)';
-        }
-      } catch (err) {
-        // Direct browser fallback if laptop server is unreachable
-        if (keyToTest) {
-          try {
-            const gRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${keyToTest}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ parts: [{ text: 'ping' }] }] })
-            });
-            if (gRes.ok) {
-              mTestStatus.textContent = '✓ Direct Gemini Connection Verified (Free Tier)!';
-              mTestStatus.style.color = 'var(--neon-green)';
-            } else {
-              const gErr = await gRes.json();
-              mTestStatus.textContent = '✕ ' + (gErr.error?.message || 'Invalid API Key');
-              mTestStatus.style.color = 'var(--neon-red)';
-            }
-          } catch (gErr) {
-            mTestStatus.textContent = '✕ Network error verifying key';
-            mTestStatus.style.color = 'var(--neon-red)';
+
+      let successCount = 0;
+      let firstError = '';
+
+      for (let i = 0; i < keys.length; i++) {
+        try {
+          const gRes = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + keys[i], {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }] })
+          });
+          if (gRes.ok) {
+            successCount++;
+          } else {
+            const errData = await gRes.json();
+            firstError = errData?.error?.message || ('HTTP ' + gRes.status);
           }
-        } else {
-          mTestStatus.textContent = 'Please enter an API Key to test.';
-          mTestStatus.style.color = 'var(--neon-amber)';
+        } catch (e) {
+          firstError = e.message;
         }
+      }
+
+      if (successCount > 0) {
+        GeminiKeyPool.setKeys(keys);
+        updateKeyPoolBadge();
+        mTestStatus.textContent = '✅ ' + successCount + '/' + keys.length + ' Key(s) Verified Healthy (Free Tier Active)!';
+        mTestStatus.style.color = 'var(--neon-green)';
+      } else {
+        mTestStatus.textContent = '❌ Key validation failed: ' + firstError;
+        mTestStatus.style.color = 'var(--neon-red)';
       }
     });
 
@@ -1590,7 +1591,8 @@
       }
 
       if (geminiApiKey) {
-        localStorage.setItem('laddu_gemini_key', geminiApiKey);
+        const cleanedKeys = GeminiKeyPool.setKeys(geminiApiKey);
+        updateKeyPoolBadge();
       }
 
       mSettingsStatus.textContent = 'Saving settings...';

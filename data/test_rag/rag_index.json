@@ -5,19 +5,19 @@
       {
         "sourceFile": "sample_physics_notes.txt",
         "chunkCount": 2,
-        "indexedAt": "2026-10-01T19:23:39.986Z",
+        "indexedAt": "2026-10-02T04:39:05.063Z",
         "filename": "sample_physics_notes.txt",
         "filePath": "C:\\Users\\USER\\.gemini\\antigravity\\scratch\\jarvis\\data\\test_rag\\sample_physics_notes.txt",
         "fileSize": 698,
         "extension": ".txt",
         "extractedLength": 698,
-        "modifiedAt": "2026-10-01T19:23:39.672Z"
+        "modifiedAt": "2026-10-02T04:39:04.897Z"
       }
     ]
   ],
   "chunks": [
     {
-      "id": "68df6aa7-475d-4c14-b986-437c4577a774",
+      "id": "1624d854-5e28-42bd-ad17-63d2f1c7106e",
       "text": "Chapter 5: Quantum Mechanics and Wave-Particle Duality\nQuantum mechanics is a fundamental theory in physics that provides a description of the physical properties of nature at the scale of atoms and subatomic particles.\nIt is the foundation of all quantum physics including quantum chemistry, quantum field theory, quantum technology, and quantum information science.\nClassical physics, the collection of theories that existed before the advent of quantum mechanics, describes many aspects of nature at an ordinary scale, but is not sufficient for describing them at small scales.",
       "sourceFile": "sample_physics_notes.txt",
       "chunkIndex": 0,
@@ -166,7 +166,7 @@
       "magnitude": 0.15710447539872308
     },
     {
-      "id": "634b1641-f807-440b-93d0-6588d1b472c2",
+      "id": "92edf134-f918-4fc5-b24a-66489b2ed909",
       "text": "nics, describes many aspects of nature at an ordinary scale, but is not sufficient for describing them at small scales.\nWave-particle duality posits that every particle or quantum entity may be described as either a particle or a wave.",
       "sourceFile": "sample_physics_notes.txt",
       "chunkIndex": 1,

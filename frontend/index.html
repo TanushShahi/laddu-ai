@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>LADDU — Universal Personal AI Assistant</title>
   <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png">
+  <link rel="shortcut icon" type="image/x-icon" href="./icons/laddu.ico">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <meta name="theme-color" content="#00f0ff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -43,7 +47,7 @@
   <!-- Top Navigation & Status Bar -->
   <header class="hud-header">
     <div class="logo-group">
-      <div class="reactor-mini" id="reactorMini"></div>
+      <img src="./icons/icon-192.png" alt="LADDU Logo" class="laddu-header-logo" id="reactorMini">
       <div class="brand">
         <h1 class="brand-title">L.A.D.D.U.</h1>
         <span class="brand-subtitle">UNIVERSAL PERSONAL AI ASSISTANT</span>
@@ -163,6 +167,7 @@
             <h2 class="panel-header">VOICE INTERFACE & CORE SENSORS</h2>
             <div class="visualizer-wrapper">
               <canvas id="voiceVisualizer" width="320" height="320"></canvas>
+              <img src="./icons/icon-192.png" alt="LADDU Core Reactor" class="reactor-logo-center">
               <div class="reactor-center-status" id="reactorStatus">
                 <span class="status-label">LADDU CORE</span>
                 <span class="status-state" id="coreStateText">ONLINE</span>
@@ -582,16 +587,18 @@
       <!-- Google Gemini Free Tier Setup Box -->
       <div style="background:rgba(0,240,255,0.05);border:1px solid var(--border-cyan);border-radius:8px;padding:12px;margin-bottom:14px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <span style="font-size:13px;font-weight:700;color:var(--neon-cyan);">🔑 Google Gemini Free API Key</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:13px;font-weight:700;color:var(--neon-cyan);">🔑 Free Gemini API Key(s) Pool</span>
+            <span id="deskKeyPoolBadge" style="font-size:10px;padding:2px 7px;border-radius:10px;background:rgba(0,255,170,0.15);color:var(--neon-green);border:1px solid rgba(0,255,170,0.3);">Pool Ready</span>
+          </div>
           <a href="https://aistudio.google.com/app/apikey" target="_blank" class="action-btn outline-btn" style="padding:4px 8px;font-size:11px;text-decoration:none;">GET FREE KEY ↗</a>
         </div>
         <p class="text-dim" style="font-size:11px;line-height:1.4;margin-bottom:8px;">
-          Google gives everyone 100% free API access with 1,500 free queries/day and live Google Search grounding. No credit card required!
+          Paste one or multiple free Gemini keys (comma or line separated). LADDU rotates keys automatically and fails over if rate limits (429) are reached!
         </p>
 
-        <div style="display:flex;gap:6px;margin-bottom:8px;">
-          <input type="password" id="deskGeminiKeyInput" placeholder="Paste Gemini API Key (AIzaSy...)" style="flex:1;padding:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border-cyan);color:#fff;border-radius:4px;font-size:13px;">
-          <button class="action-btn outline-btn" id="btnToggleKeyVisibility" style="padding:8px 10px;font-size:13px;" title="Show/Hide Key">👁️</button>
+        <div style="margin-bottom:8px;">
+          <textarea id="deskGeminiKeyInput" rows="2" placeholder="Paste Gemini API Key(s) - e.g. AIzaSy..., AIzaSy..." style="width:100%;box-sizing:border-box;padding:8px;background:rgba(0,0,0,0.6);border:1px solid var(--border-cyan);color:#fff;border-radius:4px;font-size:12px;font-family:monospace;resize:vertical;"></textarea>
         </div>
 
         <div style="display:flex;gap:8px;margin-bottom:8px;">
@@ -604,7 +611,7 @@
             </select>
           </div>
           <div style="display:flex;align-items:flex-end;">
-            <button class="action-btn outline-btn" id="btnTestGeminiKey" style="padding:7px 12px;font-size:12px;white-space:nowrap;">🧪 TEST KEY</button>
+            <button class="action-btn glow-btn" id="btnTestGeminiKey" style="padding:7px 12px;font-size:12px;white-space:nowrap;">⚡ TEST KEYS POOL</button>
           </div>
         </div>
 
