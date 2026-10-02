@@ -78,4 +78,32 @@ test('VoiceController: handles direct action commands without wake word requirem
   assert.equal(wakeRes.handled, true);
   assert.equal(wakeRes.action, 'OPEN_URL');
   assert.equal(wakeRes.url, 'https://www.youtube.com');
+
+  // WhatsApp Voice command
+  const waVoiceRes = await voice.handleSpeech('open whatsapp');
+  assert.equal(waVoiceRes.handled, true);
+  assert.equal(waVoiceRes.action, 'OPEN_WHATSAPP');
+  assert.equal(waVoiceRes.appUrl, 'whatsapp://');
+  assert.equal(waVoiceRes.webUrl, 'https://web.whatsapp.com');
+});
+
+test('IntentDispatcher: "open whatsapp", "whatsapp", "launch whatsapp" triggers OPEN_WHATSAPP', async () => {
+  const dispatcher = new IntentDispatcher();
+  
+  const res1 = await dispatcher.dispatch('open whatsapp');
+  assert.equal(res1.action, 'OPEN_WHATSAPP');
+  assert.equal(res1.appUrl, 'whatsapp://');
+  assert.equal(res1.webUrl, 'https://web.whatsapp.com');
+
+  const res2 = await dispatcher.dispatch('whatsapp');
+  assert.equal(res2.action, 'OPEN_WHATSAPP');
+
+  const res3 = await dispatcher.dispatch('open whats app');
+  assert.equal(res3.action, 'OPEN_WHATSAPP');
+
+  const res4 = await dispatcher.dispatch('launch whatsapp');
+  assert.equal(res4.action, 'OPEN_WHATSAPP');
+
+  const res5 = await dispatcher.dispatch('whatsapp web');
+  assert.equal(res5.action, 'OPEN_WHATSAPP');
 });

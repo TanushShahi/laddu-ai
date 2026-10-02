@@ -141,6 +141,8 @@ export class VoiceController {
       waUri: brainResult.waUri,
       phoneLinkUri: brainResult.phoneLinkUri,
       url: brainResult.url,
+      appUrl: brainResult.appUrl,
+      webUrl: brainResult.webUrl,
       speechPayload,
       role: brainResult.role,
       speaker: speakerVerification.speaker,

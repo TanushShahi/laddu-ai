@@ -85,13 +85,13 @@ function removeSpeechStutter(text) {
 window.removeSpeechStutter = removeSpeechStutter;
 
 function openWhatsAppWithFallback(phone = '', text = '') {
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
   let appUrl = 'whatsapp://';
   if (cleanPhone) {
     appUrl = 'whatsapp://send?phone=' + cleanPhone + (text ? '&text=' + encodeURIComponent(text) : '');
   }
 
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   let webUrl = 'https://web.whatsapp.com';
   if (cleanPhone) {
     webUrl = isMobile 
@@ -99,25 +99,42 @@ function openWhatsAppWithFallback(phone = '', text = '') {
       : 'https://web.whatsapp.com/send?phone=' + cleanPhone + (text ? '&text=' + encodeURIComponent(text) : '');
   }
 
-  console.log('[LADDU Desktop] Attempting to launch native WhatsApp application via protocol:', appUrl);
-  const startTime = Date.now();
+  console.log('[LADDU Desktop] Executing WhatsApp launch. App URL:', appUrl, 'Web URL:', webUrl);
+
   let appOpened = false;
+  const markOpened = () => { appOpened = true; };
+  window.addEventListener('blur', markOpened, { once: true });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) appOpened = true;
+  }, { once: true });
 
-  const onBlur = () => {
-    appOpened = true;
-    window.removeEventListener('blur', onBlur);
-  };
-  window.addEventListener('blur', onBlur);
-
-  window.location.href = appUrl;
+  if (isMobile) {
+    try {
+      window.location.href = appUrl;
+    } catch (e) {
+      console.warn('[LADDU Desktop] Location assign failed:', e);
+    }
+  } else {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+    try {
+      iframe.src = appUrl;
+    } catch (e) {
+      window.location.href = appUrl;
+    }
+    setTimeout(() => {
+      try { iframe.remove(); } catch(e){}
+    }, 2500);
+  }
 
   setTimeout(() => {
-    window.removeEventListener('blur', onBlur);
-    if (!appOpened && (Date.now() - startTime) < 2200) {
-      console.log('[LADDU Desktop] Native WhatsApp app not opened. Falling back to WhatsApp Web:', webUrl);
-      window.open(webUrl, '_blank');
+    window.removeEventListener('blur', markOpened);
+    if (!appOpened && !document.hidden) {
+      console.log('[LADDU Desktop] Native WhatsApp app not detected or not launched. Redirecting to WhatsApp Web:', webUrl);
+      window.location.href = webUrl;
     }
-  }, 1200);
+  }, 1600);
 }
 window.openWhatsAppWithFallback = openWhatsAppWithFallback;
 window.openDesktopContactsModal = function() {
@@ -527,77 +544,9 @@ function initSpeechRecognition() {
       return;
     }
 
-    // Check client interceptors (Image, Tools, WhatsApp)
-    const lowerCmd = cleanCommand.toLowerCase();
-    const imgM = lowerCmd.match(/(?:generate|create|draw|make|paint)?\s*(?:an?\s+)?(?:image|picture|photo|illustration|art)\s+(?:of|for|about|on)?\s*(.+)/i) || lowerCmd.match(/^(?:draw|paint)\s+(.+)$/i);
-    if (imgM) {
-      const cleanP = imgM[1].replace(/^(?:me\s+)?(?:an?\s+)?/i, '').trim();
-      const imageUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(cleanP) + '?width=1024&height=1024&nologo=true&enhance=true';
-      const imgRes = {
-        content: 'Here is the AI image generated for **"' + cleanP + '"**:',
-        action: 'AI_IMAGE_GENERATED',
-        imageUrl,
-        imagePrompt: cleanP,
-        role: { id: 'assistant', name: 'Creative Studio (LADDU)', icon: '🎨' },
-        model: 'pollinations-genai'
-      };
-      appendChatMessage('user', cleanedFinal);
-      appendChatMessage('assistant', imgRes.content, [], imgRes.role, imgRes);
-      speakBrowser({ text: 'Here is the AI image generated for ' + cleanP });
-      return;
-    }
-
-    appendChatMessage('user', cleanedFinal);
-    setAIActivityState('THINKING');
-
-    const features = extractAcousticFeatures();
-
-        // 1. Try WebSocket
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: 'VOICE_TRANSCRIPT',
-        payload: { text: cleanedFinal, features, forceExecution: true }
-      }));
-    } else {
-      // 2. HTTP Fallback
-      let data = null;
-      try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: cleanedFinal,
-            speaker: activeSpeaker,
-            features,
-            webSearch: isWebSearchActive
-          })
-        });
-        if (res.ok) {
-          data = await res.json();
-        }
-      } catch (err) {}
-
-      // 3. Standalone Client Engine Fallback (GitHub Pages / Offline)
-      if (!data) {
-        data = await processDesktopAutonomous(cleanedFinal);
-      }
-
-      if (data.role) updateRolePill(data.role, false);
-      appendChatMessage('assistant', data.content, data.citations || [], data.role, data);
-      speakBrowser({ text: data.content, rate: data.role?.voiceSettings?.rate, pitch: data.role?.voiceSettings?.pitch, telUri: data.telUri, url: data.url });
-
-      // Execute Direct System Actions on Desktop
-      if (data.telUri || data.action === 'CALL_PHONE') {
-        triggerDesktopCall(data);
-      }
-      if (data.action === 'OPEN_WHATSAPP') {
-        openWhatsAppWithFallback();
-      }
-      if (data.url && data.action !== 'OPEN_WHATSAPP') {
-        try { window.open(data.url, '_blank'); } catch (e) { window.location.href = data.url; }
-      }
-      setAIActivityState('IDLE');
-    }
+    // Route voice command directly into unified sendChat pipeline
+    if (chatInput) chatInput.value = cleanCommand || cleanedFinal;
+    await sendChat();
   }
 
   recognition.onresult = (event) => {
@@ -653,6 +602,16 @@ function initSpeechRecognition() {
   recognition.onend = () => {
     const chatInput = document.getElementById('chatInput');
     if (chatInput) chatInput.placeholder = defaultPlaceholder;
+
+    // Immediately dispatch accumulated speech if complete thought heard
+    if (deskSessionTranscript && deskSessionTranscript.trim()) {
+      if (deskSpeechDebounceTimer) {
+        clearTimeout(deskSpeechDebounceTimer);
+        deskSpeechDebounceTimer = null;
+      }
+      dispatchDeskAccumulatedSpeech();
+    }
+
     if (isListening && !isSpeakingAudio) {
       try { recognition.start(); } catch {}
     }
@@ -889,12 +848,12 @@ function appendChatMessage(role, text, citations = [], roleInfo = null, actionMe
 
     // Render Native WhatsApp Action Card
     if (actionMeta && actionMeta.action === 'OPEN_WHATSAPP') {
-      actionCardHtml += '<div style="margin-top:10px;padding:12px 14px;background:rgba(37,211,102,0.1);border:1px solid #25D366;border-radius:8px;">' +
-        '<div style="font-family:var(--font-hud);font-size:11px;color:#25D366;margin-bottom:6px;">💬 WHATSAPP DISPATCH</div>' +
-        '<div style="font-size:12px;color:#fff;margin-bottom:8px;">Dispatched to WhatsApp application. If not installed, launch Web:</div>' +
-        '<div style="display:flex;gap:8px;">' +
-          '<button onclick="openWhatsAppWithFallback()" class="action-btn" style="background:#25D366;color:#000;border:none;padding:6px 14px;font-size:11px;font-weight:700;">📱 OPEN APP</button>' +
-          '<a href="https://web.whatsapp.com" target="_blank" class="action-btn outline-btn" style="text-decoration:none;padding:6px 14px;font-size:11px;">🌐 WEB</a>' +
+      actionCardHtml += '<div class="whatsapp-action-card" style="margin-top:10px;padding:12px 14px;background:rgba(37,211,102,0.1);border:1px solid #25D366;border-radius:8px;">' +
+        '<div style="font-family:var(--font-hud);font-size:11px;color:#25D366;margin-bottom:6px;display:flex;align-items:center;gap:6px;"><span>💬</span> WHATSAPP LAUNCHER</div>' +
+        '<div style="font-size:12px;color:#fff;margin-bottom:10px;">Launching WhatsApp application. If the app is not installed, open Web:</div>' +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+          '<a href="whatsapp://" class="action-btn" style="background:#25D366;color:#000;border:none;padding:8px 16px;font-size:12px;font-weight:700;text-decoration:none;border-radius:4px;display:inline-flex;align-items:center;gap:4px;">📱 OPEN APP</a>' +
+          '<a href="https://web.whatsapp.com" target="_blank" rel="noopener" class="action-btn outline-btn" style="text-decoration:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:4px;display:inline-flex;align-items:center;gap:4px;">🌐 OPEN WEB</a>' +
         '</div>' +
       '</div>';
     }
@@ -1063,16 +1022,21 @@ async function sendChat() {
       return;
     }
 
-    if (cleanLower === 'open whatsapp' || cleanLower === 'launch whatsapp') {
+    const isWaCmd = /^(?:open|launch|start|run|go\s+to)?\s*(?:whats\s*app|whatsapp)(?:\s+(?:app|web|application))?$/i.test(cleanLower) ||
+                    /^(?:whats\s*app|whatsapp)\s+(?:kholo|chalao|start|open\s*karo)$/i.test(cleanLower);
+    if (isWaCmd) {
       openWhatsAppWithFallback();
       const waData = {
-        content: 'Opening WhatsApp application now...',
+        content: 'Opening WhatsApp application now (or WhatsApp Web if not installed)...',
         action: 'OPEN_WHATSAPP',
+        appUrl: 'whatsapp://',
+        webUrl: 'https://web.whatsapp.com',
+        url: 'whatsapp://',
         role: { id: 'assistant', name: 'Executive Assistant (JARVIS)', icon: '🤖' },
         model: 'standalone-launcher'
       };
       appendChatMessage('assistant', waData.content, [], waData.role, waData);
-      speakBrowser({ text: 'Opening WhatsApp application now.' });
+      speakBrowser({ text: 'Opening WhatsApp now.' });
       setAIActivityState('IDLE');
       return;
     }
@@ -1321,16 +1285,33 @@ async function processDesktopAutonomous(rawText, currentAttachments = []) {
   }
 
   // 2. Open Web Service / App (Native WhatsApp First)
+  const isWaCmd = /^(?:open|launch|start|run|go\s+to)?\s*(?:whats\s*app|whatsapp)(?:\s+(?:app|web|application))?$/i.test(cleanLower) ||
+                  /^(?:whats\s*app|whatsapp)\s+(?:kholo|chalao|start|open\s*karo)$/i.test(cleanLower);
+  if (isWaCmd) {
+    openWhatsAppWithFallback();
+    return {
+      content: 'Opening WhatsApp application now (or WhatsApp Web if not installed)...',
+      action: 'OPEN_WHATSAPP',
+      appUrl: 'whatsapp://',
+      webUrl: 'https://web.whatsapp.com',
+      url: 'whatsapp://',
+      app: 'WhatsApp',
+      role: { id: 'assistant', name: 'Executive Assistant (JARVIS)', icon: '🤖' },
+      model: 'standalone-launcher'
+    };
+  }
+
   const openMatch = cleanLower.match(/^(?:open|launch|start|go\s+to|navigate\s+to|visit)\s+(.+)$/i);
   if (openMatch) {
     const target = openMatch[1].trim().toLowerCase();
     if (target === 'whatsapp' || target === 'whats app') {
       openWhatsAppWithFallback();
       return {
-        content: 'Opening WhatsApp application now...',
+        content: 'Opening WhatsApp application now (or WhatsApp Web if not installed)...',
         action: 'OPEN_WHATSAPP',
         appUrl: 'whatsapp://',
         webUrl: 'https://web.whatsapp.com',
+        url: 'whatsapp://',
         app: 'WhatsApp',
         role: { id: 'assistant', name: 'Executive Assistant (JARVIS)', icon: '🤖' },
         model: 'standalone-launcher'

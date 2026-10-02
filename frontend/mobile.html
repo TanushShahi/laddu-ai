@@ -729,12 +729,18 @@
           `;
         } else if (actionMeta.action === 'OPEN_WHATSAPP') {
           actionCardHtml = `
-            <div style="margin-top:10px;padding:12px;background:rgba(37,211,102,0.1);border:1px solid #25D366;border-radius:8px;">
-              <div style="font-family:var(--font-hud);font-size:11px;color:#25D366;margin-bottom:6px;">💬 WHATSAPP DISPATCH</div>
-              <div style="font-size:12px;color:#fff;margin-bottom:8px;">Dispatched to WhatsApp application. If not installed, launch Web:</div>
-              <div style="display:flex;gap:8px;">
-                <button onclick="openWhatsAppWithFallback()" class="action-btn" style="background:#25D366;color:#000;border:none;padding:6px 14px;font-size:11px;font-weight:700;">📱 OPEN APP</button>
-                <a href="https://web.whatsapp.com" target="_blank" class="action-btn outline-btn" style="text-decoration:none;padding:6px 14px;font-size:11px;">🌐 WEB</a>
+            <div class="whatsapp-action-card" style="margin-top:10px;padding:12px 14px;background:rgba(37,211,102,0.1);border:1px solid #25D366;border-radius:8px;">
+              <div style="font-family:var(--font-hud);font-size:11px;color:#25D366;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                <span>💬</span> WHATSAPP LAUNCHER
+              </div>
+              <div style="font-size:12px;color:#fff;margin-bottom:10px;">Launching WhatsApp application. If the app is not installed, open Web:</div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <a href="whatsapp://" class="action-btn" style="background:#25D366;color:#000;border:none;padding:8px 16px;font-size:12px;font-weight:700;text-decoration:none;border-radius:4px;display:inline-flex;align-items:center;gap:4px;">
+                  📱 OPEN APP
+                </a>
+                <a href="https://web.whatsapp.com" target="_blank" rel="noopener" class="action-btn outline-btn" style="text-decoration:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:4px;display:inline-flex;align-items:center;gap:4px;">
+                  🌐 OPEN WEB
+                </a>
               </div>
             </div>
           `;
@@ -890,6 +896,55 @@
       window.speechSynthesis.speak(u);
     }
 
+    // Global WhatsApp Opener with App Detection & Web Fallback
+    function openWhatsAppWithFallback(phone = '', text = '') {
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+      let appUrl = 'whatsapp://';
+      if (cleanPhone) {
+        appUrl = 'whatsapp://send?phone=' + cleanPhone + (text ? '&text=' + encodeURIComponent(text) : '');
+      }
+
+      let webUrl = 'https://web.whatsapp.com';
+      if (cleanPhone) {
+        webUrl = isMobile 
+          ? 'https://api.whatsapp.com/send?phone=' + cleanPhone + (text ? '&text=' + encodeURIComponent(text) : '')
+          : 'https://web.whatsapp.com/send?phone=' + cleanPhone + (text ? '&text=' + encodeURIComponent(text) : '');
+      }
+
+      console.log('[LADDU Mobile] Executing WhatsApp launch. App URL:', appUrl, 'Web URL:', webUrl);
+
+      let appOpened = false;
+      const markOpened = () => { appOpened = true; };
+      window.addEventListener('blur', markOpened, { once: true });
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) appOpened = true;
+      }, { once: true });
+
+      if (isMobile) {
+        try {
+          window.location.href = appUrl;
+        } catch (e) {
+          console.warn('[LADDU Mobile] Location assign failed:', e);
+        }
+      } else {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        try { iframe.src = appUrl; } catch(e) { window.location.href = appUrl; }
+        setTimeout(() => { try { iframe.remove(); } catch(e){} }, 2500);
+      }
+
+      setTimeout(() => {
+        window.removeEventListener('blur', markOpened);
+        if (!appOpened && !document.hidden) {
+          console.log('[LADDU Mobile] Native WhatsApp app not detected or not launched. Redirecting to WhatsApp Web:', webUrl);
+          window.location.href = webUrl;
+        }
+      }, 1600);
+    }
+    window.openWhatsAppWithFallback = openWhatsAppWithFallback;
+
     // ==========================================
     // 3b. STANDALONE MOBILE ENGINE (OFFLINE WHEN LAPTOP IS OFF)
     // ==========================================
@@ -965,6 +1020,22 @@
         if (/^(?:मौसम कैसा है|aaj ka mausam|mausam kaisa hai|weather kaisa hai)$/i.test(cleanLower)) {
           cleanLower = 'what is the weather';
           text = cleanLower;
+        }
+
+        // 0.9 WhatsApp Intent
+        const isWaMatch = /^(?:open|launch|start|run|go\s+to)?\s*(?:whats\s*app|whatsapp)(?:\s+(?:app|web|application))?$/i.test(cleanLower) ||
+                          /^(?:whats\s*app|whatsapp)\s+(?:kholo|chalao|start|open\s*karo)$/i.test(cleanLower);
+        if (isWaMatch) {
+          openWhatsAppWithFallback();
+          return {
+            content: 'Opening WhatsApp application now (or WhatsApp Web if not installed)...',
+            action: 'OPEN_WHATSAPP',
+            appUrl: 'whatsapp://',
+            webUrl: 'https://web.whatsapp.com',
+            url: 'whatsapp://',
+            app: 'WhatsApp',
+            model: 'standalone-launcher'
+          };
         }
 
         // 1. Phone Call Intent
@@ -1557,16 +1628,21 @@
         return;
       }
 
-      if (cleanLower === 'open whatsapp' || cleanLower === 'launch whatsapp') {
+      const isWaCmd = /^(?:open|launch|start|run|go\s+to)?\s*(?:whats\s*app|whatsapp)(?:\s+(?:app|web|application))?$/i.test(cleanLower) ||
+                      /^(?:whats\s*app|whatsapp)\s+(?:kholo|chalao|start|open\s*karo)$/i.test(cleanLower);
+      if (isWaCmd) {
         openWhatsAppWithFallback();
         const waResult = {
-          content: 'Opening WhatsApp application now...',
+          content: 'Opening WhatsApp application now (or WhatsApp Web if not installed)...',
           action: 'OPEN_WHATSAPP',
-          role: { id: 'assistant', name: 'JARVIS', icon: '🤖' },
+          appUrl: 'whatsapp://',
+          webUrl: 'https://web.whatsapp.com',
+          url: 'whatsapp://',
+          role: { id: 'assistant', name: 'LADDU', icon: '🤖' },
           model: 'app-launcher'
         };
         appendMessage('assistant', waResult.content, waResult);
-        speakMobile('Opening WhatsApp application now.');
+        speakMobile('Opening WhatsApp now.');
         return;
       }
 
@@ -1629,13 +1705,25 @@
         triggerPhoneDialer(data.telUri, data.contact, data.phoneNumber);
       }
 
+      // Trigger WhatsApp
+      if (data.action === 'OPEN_WHATSAPP') {
+        openWhatsAppWithFallback();
+      }
+
       // Trigger App / URL Opener
       if (data.action === 'OPEN_URL' || data.url) {
         if (data.url === 'camera') {
           const camInput = document.getElementById('mCamInput');
           if (camInput) camInput.click();
-        } else {
-          try { window.open(data.url, '_blank'); } catch(e) { window.location.href = data.url; }
+        } else if (data.action !== 'OPEN_WHATSAPP') {
+          try {
+            const opened = window.open(data.url, '_blank');
+            if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+              window.location.href = data.url;
+            }
+          } catch(e) {
+            window.location.href = data.url;
+          }
         }
       }
 
@@ -1675,6 +1763,10 @@
 
       function dispatchAccumulatedSpeech() {
         if (!sessionTranscript.trim()) return;
+        if (speechDebounceTimer) {
+          clearTimeout(speechDebounceTimer);
+          speechDebounceTimer = null;
+        }
         const rawSpoken = removeSpeechStutter(sessionTranscript.trim());
         sessionTranscript = '';
         const spoken = normalizeSpokenAliases(rawSpoken);
@@ -1747,41 +1839,6 @@
         }
       };
 
-      recognition.onend = () => {
-        isRecognizing = false;
-        mBtnVoice.classList.remove('active');
-        mBtnVoice.innerHTML = '<span class="btn-icon">🎙</span> PUSH TO COMMUNICATE';
-        
-        // If an incomplete starter was heard mid-sentence, restart recognition to allow the user to finish
-        const cleanedCheck = removeSpeechStutter(sessionTranscript)
-          .replace(/^(?:hey\s+)?(?:laddu|jarvis)[,\s]*/i, '')
-          .trim()
-          .toLowerCase();
-        const isIncompleteStarter = /^(?:call|dial|phone|ring|open|launch|start|visit|generate|create|draw|make|paint|use|search|find|show)$/i.test(cleanedCheck);
-
-        if ((siriModeActive || speechDebounceTimer) && isIncompleteStarter) {
-          console.log('[LADDU Voice] Incomplete command starter heard ("' + cleanedCheck + '"). Continuing listen stream...');
-          try { recognition.start(); return; } catch(e){}
-        }
-
-        if (speechDebounceTimer) {
-          // Let the debounce timer finish its natural silence window
-        } else if (sessionTranscript && sessionTranscript.trim() && !isIncompleteStarter) {
-          dispatchAccumulatedSpeech();
-        }
-        if (siriModeActive && !isSpeakingAudio) {
-          setTimeout(() => {
-            if (siriModeActive && !isSpeakingAudio && recognition && !isRecognizing) {
-              try { recognition.start(); } catch(e){}
-            }
-          }, 200);
-        } else {
-          mVoiceState.textContent = 'STANDBY';
-          const heroLogo = document.getElementById('mHeroLogo');
-          if (heroLogo) heroLogo.className = 'laddu-hero-logo';
-        }
-      };
-
       recognition.onerror = (err) => {
         console.warn('[LADDU Mobile Speech Error]:', err.error);
         if (err.error === 'not-allowed') {
@@ -1808,19 +1865,34 @@
         isRecognizing = false;
         mBtnVoice.classList.remove('active');
         mBtnVoice.innerHTML = '<span class="btn-icon">🎙</span> PUSH TO COMMUNICATE';
-        if (speechDebounceTimer) {
-          clearTimeout(speechDebounceTimer);
-          speechDebounceTimer = null;
+        
+        // If an incomplete starter was heard mid-sentence, restart recognition to allow the user to finish
+        const cleanedCheck = removeSpeechStutter(sessionTranscript)
+          .replace(/^(?:hey\s+)?(?:laddu|jarvis)[,\s]*/i, '')
+          .trim()
+          .toLowerCase();
+        const isIncompleteStarter = /^(?:call|dial|phone|ring|open|launch|start|visit|generate|create|draw|make|paint|use|search|find|show)$/i.test(cleanedCheck);
+
+        if ((siriModeActive || speechDebounceTimer) && isIncompleteStarter) {
+          console.log('[LADDU Voice] Incomplete command starter heard ("' + cleanedCheck + '"). Continuing listen stream...');
+          try { recognition.start(); return; } catch(e){}
         }
-        if (speechAccumulator && speechAccumulator.trim()) {
+
+        // If the speech engine ended after user finished speaking, immediately dispatch accumulated speech!
+        if (sessionTranscript && sessionTranscript.trim()) {
+          if (speechDebounceTimer) {
+            clearTimeout(speechDebounceTimer);
+            speechDebounceTimer = null;
+          }
           dispatchAccumulatedSpeech();
         }
+
         if (siriModeActive && !isSpeakingAudio) {
           setTimeout(() => {
             if (siriModeActive && !isSpeakingAudio && recognition && !isRecognizing) {
               try { recognition.start(); } catch(e){}
             }
-          }, 200);
+          }, 300);
         } else {
           mVoiceState.textContent = 'STANDBY';
           const heroLogo = document.getElementById('mHeroLogo');

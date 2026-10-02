@@ -84,6 +84,13 @@ export class IntentDispatcher {
       }
     }
 
+    // 0.9 Dedicated WhatsApp Intent: "open whatsapp", "whatsapp", "launch whatsapp", "whatsapp web"
+    const waIntentMatch = cleanLower.match(/^(?:open|launch|start|run|go\s+to)?\s*(?:whats\s*app|whatsapp)(?:\s+(?:app|web|application))?$/i) ||
+                          cleanLower.match(/^(?:whats\s*app|whatsapp)\s+(?:kholo|chalao|start|open\s*karo)$/i);
+    if (waIntentMatch) {
+      return this._handleAppLaunch('whatsapp');
+    }
+
     // 1. Phone Call Intent: "call papa", "call dad", "dial +1234567890", "phone mom"
     const callMatch = cleanLower.match(/^(?:call|phone|dial|ring|make\s+a\s+call\s+to|place\s+a\s+call\s+to)\s+(.+)$/i);
     if (callMatch) {
@@ -341,13 +348,15 @@ export class IntentDispatcher {
       return { content: `Opening website: ${target}`, action: 'OPEN_URL', url: target, app: target, model: 'app-launcher' };
     }
 
-    // 1.5 WhatsApp Application (Native Protocol)
-    if (t === 'whatsapp' || t === 'whats app') {
+    // 1.5 WhatsApp Application (Native Protocol with Web fallback)
+    if (t === 'whatsapp' || t === 'whats app' || t === 'whatsapp web') {
       if (isWin) {
-        this._spawnCmd('start whatsapp:');
+        try {
+          this._spawnCmd('start whatsapp:');
+        } catch (e) {}
       }
       return {
-        content: 'Opening WhatsApp application now...',
+        content: 'Opening WhatsApp application now (or WhatsApp Web if app is not installed)...',
         action: 'OPEN_WHATSAPP',
         appUrl: 'whatsapp://',
         webUrl: 'https://web.whatsapp.com',
